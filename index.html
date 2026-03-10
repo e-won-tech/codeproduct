@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CODE PRODUCT — GAS Edition</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root{--bg:#f6f7fb;--card:#ffffff;--ink:#101828;--muted:#6b7280;--bd:#e6eaf2;--pri:#2f6bff;--radius:18px;--shadow:0 8px 24px rgba(16,24,40,.08)}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:'Sarabun',system-ui}
+    header{position:sticky;top:0;z-index:10;background:rgba(246,247,251,.7);backdrop-filter:saturate(180%) blur(10px);border-bottom:1px solid var(--bd)}
+    .wrap{max-width:1200px;margin:0 auto;padding:18px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#2f6bff,#7aa2ff);display:grid;place-items:center;color:#fff;font-weight:700;flex-shrink:0}
+    .tabs{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+    .tab{padding:10px 14px;border-radius:999px;background:#fff;border:1px solid var(--bd);cursor:pointer;font-family:'Sarabun',system-ui}
+    .tab.active{background:#2f6bff;color:#fff;border-color:transparent}
+    main{padding:24px 0}
+    .grid{display:grid;gap:16px}
+    .grid.cols-2{grid-template-columns:repeat(2,1fr)}
+    .grid.cols-4{grid-template-columns:repeat(4,1fr)}
+    @media(max-width:1024px){.grid.cols-4{grid-template-columns:repeat(2,1fr)}.grid.cols-2{grid-template-columns:1fr}}
+    .card{background:var(--card);border:1px solid var(--bd);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .card .hd{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--bd);font-weight:700}
+    .card .bd{padding:18px}
+    label{font-size:.95rem;color:#3b3f46}
+    .field{display:flex;flex-direction:column;gap:8px}
+    .input,.select,.text{appearance:none;width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-family:'Sarabun',system-ui;font-size:1rem}
+    .input:focus,.select:focus,.text:focus{outline:none;border-color:#2f6bff;box-shadow:0 0 0 3px rgba(47,107,255,.12)}
+    .seg{display:inline-flex;border:1px solid var(--bd);border-radius:999px;overflow:hidden;width:max-content}
+    .seg button{padding:8px 14px;border:0;background:#fff;cursor:pointer;flex:0 0 auto;white-space:nowrap;font-family:'Sarabun',system-ui}
+    .seg button.active{background:#2f6bff;color:#fff}
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 16px;border-radius:14px;border:1px solid var(--bd);background:#fff;cursor:pointer;font-weight:600;font-family:'Sarabun',system-ui;font-size:1rem}
+    .btn.primary{background:#d6e8b5;border-color:#d6e8b5}
+    .btn.danger{background:#ffefef;color:#991b1b;border-color:#ffd3d3}
+    .btn.info{background:#eef2ff;color:#1e1b4b;border-color:#c7d2fe}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .uploader{border:2px dashed #d7dff0;border-radius:16px;padding:18px;text-align:center;background:#fafcff;cursor:pointer}
+    .preview{height:160px;border-radius:14px;background:#f2f5fb;border:1px dashed #d8deec;display:grid;place-items:center;color:#6b7280;overflow:hidden}
+    .preview img{max-width:100%;max-height:100%;object-fit:contain}
+    .fourcols{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    @media(max-width:1024px){.fourcols{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:720px){.fourcols{grid-template-columns:1fr}}
+    table{width:100%;border-collapse:separate;border-spacing:0}
+    thead th{font-weight:700;text-align:center;padding:12px;border:1px solid var(--bd);background:#fff}
+    tbody td{padding:12px;border:1px solid #f0f2f6;text-align:center}
+    tbody tr:hover{background:#fafcff}
+    .actions{display:flex;gap:8px;justify-content:center}
+    .iconbtn{width:36px;height:36px;border-radius:10px;border:1px solid var(--bd);display:grid;place-items:center;background:#fff;cursor:pointer}
+    .toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+    .search{flex:1;min-width:220px}
+    .hint{font-size:.9rem;color:#6b7280}
+    .barcode-box{display:grid;gap:6px;align-content:flex-start}
+    canvas#barcodeCanvas{width:100%;height:64px;border-radius:10px;border:1px dashed #c8d2ea;background:#fff}
+    .footerbtns{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .hidden{display:none!important}
+
+    /* Loading overlay */
+    #loadingOverlay{position:fixed;inset:0;background:rgba(255,255,255,.75);backdrop-filter:blur(4px);display:grid;place-items:center;z-index:999}
+    .spinner{width:48px;height:48px;border:5px solid #e0e7ff;border-top-color:#2f6bff;border-radius:50%;animation:spin .7s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    #loadingMsg{margin-top:12px;font-weight:600;color:#2f6bff}
+
+    /* Toast */
+    #toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#101828;color:#fff;padding:12px 22px;border-radius:999px;font-size:.95rem;opacity:0;transition:opacity .3s;pointer-events:none;z-index:1000}
+    #toast.show{opacity:1}
+
+    /* Banner */
+    #gasBanner{margin-top:12px;padding:10px 14px;border-radius:12px;background:#fffef0;border:1px solid #ffdf6b;color:#7c5e10}
+
+    /* Print */
+    @page{size:A4 portrait;margin:0}
+    @media print{
+      header,.tabs,#page-list,.footerbtns,#gasBanner{display:none!important}
+      body{background:#fff}
+      .print-page{width:210mm;padding:16mm;margin:0 auto;break-after:page;page-break-after:always}
+      .print-page:last-child{break-after:auto;page-break-after:auto}
+      .print-h1{font-weight:700;font-size:18pt;margin-bottom:4mm}
+      .print-meta{margin:2mm 0}
+      .print-table{width:100%;border-collapse:collapse;font-size:11pt;margin-top:4mm}
+      .print-table th,.print-table td{border:1px solid #444;padding:6px}
+      .print-footer{display:flex;justify-content:space-between;margin-top:6mm;font-size:10pt;color:#444}
+      .print-footer img{height:14mm;width:auto}
+      .print-hero{width:300px!important;height:300px!important;margin:2mm auto 4mm auto!important}
+      .print-hero img{width:300px!important;height:300px!important;object-fit:contain!important}
+    }
+    .print-hero{position:relative;border:1px solid #ddd;display:grid;place-items:center;margin:2mm 0 4mm 0;background:#fff}
+    .print-titlebar{border:1px solid #ddd;border-radius:2mm;padding:4mm;margin:4mm 0 2mm 0;background:#fafafa}
+    header .wrap{border-bottom:4px solid #ffdbe0}
+  </style>
+</head>
+<body>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay">
+  <div style="text-align:center">
+    <div class="spinner"></div>
+    <div id="loadingMsg">กำลังโหลด…</div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<header>
+  <div class="wrap">
+    <div class="brand">
+      <div class="logo">CP</div>
+      <div>
+        <div style="font-size:1.15rem;font-weight:700">CODE PRODUCT</div>
+        <div class="hint">ระบบจัดการส่วนประกอบสินค้า (Google Sheets)</div>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="tab active" data-tab="form">หน้ากรอกสินค้า</button>
+      <button class="tab" data-tab="list">หน้ารายการสินค้า</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="gasBanner" class="hidden">⚠️ ยังไม่ได้ตั้งค่า GAS_URL — โปรดแก้ไขในโค้ด</div>
+
+  <!-- ══════════════════ FORM PAGE ══════════════════ -->
+  <section id="page-form">
+    <div class="grid cols-2">
+      <!-- ข้อมูลทั่วไป -->
+      <div class="card">
+        <div class="hd">ข้อมูลทั่วไป</div>
+        <div class="bd grid cols-2">
+          <div class="field">
+            <label>ผลิตภัณฑ์ของ</label>
+            <select id="company" class="select"></select>
+            <input id="companyOther" class="input hidden" placeholder="ระบุร้านค้าอื่น ๆ"/>
+          </div>
+          <div class="field">
+            <label>หมวดหมู่สาร</label>
+            <select id="category" class="select"></select>
+          </div>
+          <div class="field">
+            <label>รูปแบบรายการ</label>
+            <div class="seg" id="modeSeg">
+              <button class="active" data-mode="single">รายการเดี่ยว</button>
+              <button data-mode="set">รายการชุด</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- บาร์โค้ด + รูป -->
+      <div class="card">
+        <div class="hd">บาร์โค้ด (Code128) + รูปสินค้า</div>
+        <div class="bd grid cols-2">
+          <div class="field">
+            <label>เลข 9 หลัก</label>
+            <input id="barcodeInput" class="input" placeholder="เช่น 123456789" maxlength="9"/>
+            <div class="hint">ต้องเป็นตัวเลข 9 หลัก</div>
+            <label style="margin-top:16px">อัปโหลดรูปสินค้า</label>
+            <div id="uploader" class="uploader">คลิก / ลากวาง / Ctrl+V</div>
+            <input id="fileInput" type="file" accept="image/*" hidden/>
+            <div class="preview" id="photoPreview">ยังไม่มีรูป</div>
+            <div id="photoStatus" class="hint" style="margin-top:4px"></div>
+          </div>
+          <div class="barcode-box">
+            <label>Preview Barcode</label>
+            <canvas id="barcodeCanvas" height="64"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- รายละเอียดสินค้า -->
+    <div class="card" style="margin-top:16px">
+      <div class="hd">รายละเอียดสินค้า</div>
+      <div class="bd">
+        <div class="grid cols-2" style="margin-bottom:14px">
+          <div class="field">
+            <label>ชื่อสินค้า</label>
+            <input id="productName" class="input" placeholder="ชื่อสินค้า" list="dl-productName"/>
+            <datalist id="dl-productName"></datalist>
+          </div>
+          <div class="field">
+            <label>ขนาด</label>
+            <input id="productSize" class="input" placeholder="เช่น 1000 ml / 1 กก." list="dl-productSize"/>
+            <datalist id="dl-productSize"></datalist>
+          </div>
+        </div>
+        <div id="formSingle" class="fourcols"></div>
+        <div id="formSet" class="fourcols hidden"></div>
+
+        <div class="footerbtns" style="margin-top:14px">
+          <button id="saveBtn" class="btn primary">💾 บันทึกสินค้า</button>
+          <button id="newBtn" class="btn">➕ เพิ่มสินค้าใหม่</button>
+          <button id="clearBtn" class="btn">🗑️ ล้างฟอร์ม</button>
+          <button id="printBtn" class="btn">🖨️ พิมพ์รายการ</button>
+          <span id="editBadge" class="hidden" style="padding:6px 12px;border-radius:999px;background:#fff3cd;border:1px solid #ffc107;font-size:.9rem">✏️ กำลังแก้ไขรายการ</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════ LIST PAGE ══════════════════ -->
+  <section id="page-list" class="hidden">
+    <div class="card">
+      <div class="hd">
+        ค้นหา / ตัวกรอง
+        <button id="btnReloadList" class="btn" style="font-size:.85rem;padding:6px 12px">🔄 โหลดใหม่</button>
+      </div>
+      <div class="bd toolbar">
+        <div class="field" style="min-width:220px">
+          <label>ผลิตภัณฑ์ของ</label>
+          <select id="filterCompany" class="select"></select>
+        </div>
+        <div class="field" style="min-width:220px">
+          <label>หมวดหมู่สาร</label>
+          <select id="filterCategory" class="select"></select>
+        </div>
+        <div class="field">
+          <label>ประเภท</label>
+          <div class="seg">
+            <button id="filterSingle" class="active">รายการเดี่ยว</button>
+            <button id="filterSet">รายการชุด</button>
+          </div>
+        </div>
+        <div class="field search">
+          <label>ค้นหาชื่อสินค้า</label>
+          <input id="searchInput" class="input" placeholder="พิมพ์เพื่อค้นหา…"/>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="hd">ตารางรายการสินค้า <span id="listCount" class="hint"></span></div>
+      <div class="bd">
+        <div style="overflow-x:auto">
+          <table id="listTable">
+            <thead>
+              <tr>
+                <th style="width:44px"><input id="selectAll" type="checkbox"/></th>
+                <th style="width:72px">รูป</th>
+                <th>ชื่อสินค้า</th>
+                <th style="width:160px">ขนาด</th>
+                <th style="width:220px">ผลิตภัณฑ์ของ</th>
+                <th style="width:220px">การทำงาน</th>
+              </tr>
+            </thead>
+            <tbody id="listTableBody"></tbody>
+          </table>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:10px">
+          <div class="footerbtns">
+            <button id="bulkDelete" class="btn danger">ลบที่เลือก</button>
+            <button id="bulkPrint" class="btn">🖨️ พิมพ์ที่เลือก</button>
+          </div>
+          <div class="seg" role="navigation">
+            <button id="prevPage">‹</button>
+            <button id="pageNumber" class="active">1</button>
+            <button id="nextPage">›</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Print template -->
+<template id="printTpl">
+  <div class="print-page">
+    <div class="print-h1">CODE PRODUCT</div>
+    <div class="print-meta">ผลิตภัณฑ์ของ: <span data-f="company"></span> — หมวดหมู่สาร: <span data-f="category"></span></div>
+    <div class="print-titlebar"><div><b>ชื่อสินค้า:</b> <span data-f="name"></span></div><div><b>ขนาด:</b> <span data-f="size"></span></div></div>
+    <div class="print-hero"><img data-f="photo" style="max-width:100%;max-height:100%"/></div>
+    <table class="print-table" data-f="table"></table>
+    <div class="print-footer"><span>พิมพ์เมื่อ: <span data-f="printed"></span></span><span><img data-f="barcode"/></span></div>
+  </div>
+</template>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  ⚙️  ตั้งค่าตรงนี้ก่อนใช้งาน
+// ═══════════════════════════════════════════════════════════════
+const GAS_URL = 'YOUR_GAS_WEB_APP_URL';   // <-- ใส่ URL ที่ได้จาก Deploy
+
+const PAGE_SIZE = 50;
+
+// ═══════════════════════════════════════════════════════════════
+//  GAS API Layer
+// ═══════════════════════════════════════════════════════════════
+async function gasCall(action, data = {}) {
+  const res = await fetch(GAS_URL, {
+    method:   'POST',
+    redirect: 'follow',
+    body:     JSON.stringify({ action, ...data })
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const json = await res.json();
+  if (json.error) throw new Error(json.error);
+  return json;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Loading / Toast helpers
+// ═══════════════════════════════════════════════════════════════
+const overlay  = document.getElementById('loadingOverlay');
+const loadMsg  = document.getElementById('loadingMsg');
+const toastEl  = document.getElementById('toast');
+let toastTimer = null;
+
+function showLoading(msg = 'กำลังโหลด…') { loadMsg.textContent = msg; overlay.classList.remove('hidden'); }
+function hideLoading() { overlay.classList.add('hidden'); }
+function toast(msg, ms = 2800) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), ms);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Image helpers
+// ═══════════════════════════════════════════════════════════════
+function processImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_W  = 800;
+        let w = img.width, h = img.height;
+        if (w > MAX_W) { h *= MAX_W / w; w = MAX_W; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.75);
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function blobToBase64(blob) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onloadend = () => res(r.result);
+    r.onerror   = rej;
+    r.readAsDataURL(blob);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Code128
+// ═══════════════════════════════════════════════════════════════
+const CODE128_PATTERNS = ["11011001100","11001101100","11001100110","10010011000","10010001100","10001001100","10011001000","10011000100","10001100100","11001001000","11001000100","11000100100","10110011100","10011011100","10011001110","10111001100","10011101100","10011100110","11001110010","11001011100","11001001110","11011100100","11001110100","11101101110","11101001100","11100101100","11100100110","11101100100","11100110100","11100110010","11011011000","11011000110","11000110110","10100011000","10001011000","10001000110","10110001000","10001101000","10001100010","11010001000","11000101000","11000100010","10110111000","10110001110","10001101110","10111011000","10111000110","10001110110","11101110110","11010001110","11000101110","11011101000","11011100010","11011101110","11101011000","11101000110","11100010110","11101101000","11101100010","11100011010","11101111010","11001000010","11110001010","10100110000","10100001100","10010110000","10010000110","10000101100","10000100110","10110010000","10110000100","10011010000","10011000010","10000110100","10000110010","11000010010","11001010000","11110111010","11000010100","10001111010","10100111100","10010111100","10010011110","10111100100","10011110100","10011110010","11110100100","11110010100","11110010010","11011011110","11011110110","11110110110","10101111000","10100011110","10001011110","10111101000","10111100010","11110101000","11110100010","10111011110","10111101110","11101011110","11110101110","11010000100","11010010000","11010011100","1100011101011"];
+
+function drawCode128(canvas, text) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.clientWidth || canvas.width;
+  const H = canvas.height || 64;
+  ctx.clearRect(0, 0, W, H);
+  try {
+    for (const ch of text) { const c = ch.charCodeAt(0); if (c < 32 || c > 126) throw new Error('invalid char'); }
+    const codes = [104];
+    for (const ch of text) codes.push(ch.charCodeAt(0) - 32);
+    let cs = 104;
+    for (let i = 1; i < codes.length; i++) cs += codes[i] * i;
+    cs %= 103; codes.push(cs); codes.push(106);
+    const bits = codes.map(c => CODE128_PATTERNS[c]).join('');
+    const mw   = W / bits.length;
+    let x = 0; ctx.fillStyle = '#111';
+    for (let i = 0; i < bits.length; i++) { if (bits[i] === '1') ctx.fillRect(x, 0, Math.ceil(mw), H - 12); x += mw; }
+    ctx.font = '10px Sarabun'; ctx.textAlign = 'center'; ctx.fillText(text, W / 2, H - 2);
+  } catch {
+    ctx.fillStyle = '#ddd'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#999'; ctx.font = '10px Sarabun'; ctx.textAlign = 'center'; ctx.fillText('INVALID', W / 2, H / 2);
+  }
+}
+
+function drawBarcode(canvas, str) {
+  if (/^\d{9}$/.test(str || '')) drawCode128(canvas, str);
+  else { const ctx = canvas.getContext('2d'); const W = canvas.clientWidth || canvas.width; ctx.clearRect(0, 0, W, canvas.height); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Print
+// ═══════════════════════════════════════════════════════════════
+function nowStr() { return new Date().toLocaleString('th-TH'); }
+
+function buildPrintPage(item) {
+  const printTpl = document.getElementById('printTpl');
+  const node = printTpl.content.cloneNode(true);
+  node.querySelector('[data-f="company"]').textContent  = item.company  || '';
+  node.querySelector('[data-f="category"]').textContent = item.category || '';
+  node.querySelector('[data-f="name"]').textContent     = item.name     || '';
+  node.querySelector('[data-f="size"]').textContent     = item.size     || '';
+  node.querySelector('[data-f="printed"]').textContent  = nowStr();
+  const img = node.querySelector('[data-f="photo"]');
+  if (item.photoUrl) img.src = item.photoUrl;
+  else if (item._blobUrl) img.src = item._blobUrl;
+  else img.remove();
+  const table = node.querySelector('[data-f="table"]');
+  const rows = Object.entries(item.parts || {}).filter(([, v]) => v && String(v).trim());
+  table.innerHTML = '<thead><tr><th>หัวข้อ</th><th>รายละเอียด</th></tr></thead><tbody>' +
+    rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('') + '</tbody>';
+  const bc = document.createElement('canvas'); bc.width = 360; bc.height = 80;
+  drawCode128(bc, item.barcode || '');
+  node.querySelector('[data-f="barcode"]').src = bc.toDataURL('image/png');
+  return node;
+}
+
+function openPrintWindow(html) {
+  const w = window.open('', '_blank');
+  if (!w) { alert('โปรดอนุญาตป๊อปอัปก่อน'); return; }
+  const styles = document.querySelector('style').innerHTML;
+  w.document.write(`<html><head><title>พิมพ์</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+    </head><body>${html}<style>${styles}</style></body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(() => { w.print(); w.close(); }, 500);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  App State
+// ═══════════════════════════════════════════════════════════════
+let allItems    = [];   // สินค้าทั้งหมดจาก GAS
+let dropdowns   = {};   // { company:[], category:[], fields_single:[], fields_set:[] }
+let editId      = null;
+let currentMode = 'single';
+let page        = 1;
+let currentImageBlob = null;  // Blob ที่รอ upload
+let currentPhotoUrl  = '';    // URL รูปใน Drive (ถ้าเลือกสินค้าเดิม)
+let currentPhotoFileId = '';  // fileId ใน Drive
+
+// ═══════════════════════════════════════════════════════════════
+//  DOM refs
+// ═══════════════════════════════════════════════════════════════
+const pageForm       = document.getElementById('page-form');
+const pageList       = document.getElementById('page-list');
+const company        = document.getElementById('company');
+const companyOther   = document.getElementById('companyOther');
+const category       = document.getElementById('category');
+const modeSeg        = document.getElementById('modeSeg');
+const formSingle     = document.getElementById('formSingle');
+const formSet        = document.getElementById('formSet');
+const barcodeInput   = document.getElementById('barcodeInput');
+const barcodeCanvas  = document.getElementById('barcodeCanvas');
+const uploader       = document.getElementById('uploader');
+const fileInput      = document.getElementById('fileInput');
+const photoPreview   = document.getElementById('photoPreview');
+const photoStatus    = document.getElementById('photoStatus');
+const productName    = document.getElementById('productName');
+const productSize    = document.getElementById('productSize');
+const saveBtn        = document.getElementById('saveBtn');
+const newBtn         = document.getElementById('newBtn');
+const clearBtn       = document.getElementById('clearBtn');
+const printBtn       = document.getElementById('printBtn');
+const editBadge      = document.getElementById('editBadge');
+const filterCompany  = document.getElementById('filterCompany');
+const filterCategory = document.getElementById('filterCategory');
+const filterSingle   = document.getElementById('filterSingle');
+const filterSet      = document.getElementById('filterSet');
+const searchInput    = document.getElementById('searchInput');
+const prevPageBtn    = document.getElementById('prevPage');
+const nextPageBtn    = document.getElementById('nextPage');
+const pageNumber     = document.getElementById('pageNumber');
+const selectAll      = document.getElementById('selectAll');
+const listTableBody  = document.getElementById('listTableBody');
+const listCount      = document.getElementById('listCount');
+
+// ═══════════════════════════════════════════════════════════════
+//  Dropdown / Select helpers
+// ═══════════════════════════════════════════════════════════════
+function fillSelect(el, arr, withAll = false) {
+  el.innerHTML = '';
+  if (withAll) { const o = document.createElement('option'); o.textContent = 'ทั้งหมด'; o.value = ''; el.appendChild(o); }
+  (arr || []).forEach(v => { const o = document.createElement('option'); o.textContent = v; o.value = v; el.appendChild(o); });
+}
+
+function fillDatalist(dlId, arr) {
+  let dl = document.getElementById(dlId);
+  if (!dl) { dl = document.createElement('datalist'); dl.id = dlId; document.body.appendChild(dl); }
+  dl.innerHTML = (arr || []).map(v => `<option value="${v}"></option>`).join('');
+}
+
+function buildFormFields(container, labels) {
+  container.innerHTML = '';
+  (labels || []).forEach(lbl => {
+    const d = document.createElement('div');
+    d.className = 'field';
+    if (lbl === 'หมายเหตุ') {
+      d.style.gridColumn = '1/-1';
+      d.innerHTML = `<label>${lbl}</label><textarea class="text" rows="3" data-k="${lbl}"></textarea>`;
+    } else {
+      const dlId = 'dl-field-' + lbl.replace(/\s+/g, '_');
+      d.innerHTML = `<label>${lbl}</label><input class="input" data-k="${lbl}" list="${dlId}"/><datalist id="${dlId}"></datalist>`;
+    }
+    container.appendChild(d);
+  });
+  // Fill datalist for each field from dropdowns suggestion
+  container.querySelectorAll('input[data-k]').forEach(inp => {
+    const k = inp.dataset.k;
+    const dlEl = document.getElementById(inp.getAttribute('list'));
+    if (dlEl && dropdowns['suggest_' + k]) fillDatalist(inp.getAttribute('list'), dropdowns['suggest_' + k]);
+  });
+}
+
+function applyDropdowns() {
+  fillSelect(company,        dropdowns.company   || []);
+  fillSelect(category,       dropdowns.category  || []);
+  fillSelect(filterCompany,  dropdowns.company   || [], true);
+  fillSelect(filterCategory, dropdowns.category  || [], true);
+  buildFormFields(formSingle, dropdowns.fields_single);
+  buildFormFields(formSet,    dropdowns.fields_set);
+  fillDatalist('dl-productName', dropdowns.suggest_ชื่อสินค้า || []);
+  fillDatalist('dl-productSize', dropdowns.suggest_ขนาด       || []);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Load Dropdowns from GAS
+// ═══════════════════════════════════════════════════════════════
+async function loadDropdowns() {
+  const res = await gasCall('getDropdowns');
+  dropdowns = res.data || {};
+  // Also load common suggestions
+  const fields = ['ชื่อสินค้า', 'ขนาด', ...(dropdowns.fields_single || []), ...(dropdowns.fields_set || [])];
+  await Promise.all(fields.map(async f => {
+    try {
+      const r = await gasCall('getSuggestions', { field: f });
+      if (r.data && r.data.length) dropdowns['suggest_' + f] = r.data;
+    } catch { /* ข้ามถ้า error */ }
+  }));
+  applyDropdowns();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Photo helpers
+// ═══════════════════════════════════════════════════════════════
+function loadImageToPreview(src) {
+  photoPreview.innerHTML = '';
+  if (!src) { photoPreview.textContent = 'ยังไม่มีรูป'; return; }
+  const img = new Image();
+  img.onload = () => photoPreview.appendChild(img);
+  img.onerror = () => { photoPreview.textContent = 'โหลดรูปไม่ได้'; };
+  if (src instanceof Blob) img.src = URL.createObjectURL(src);
+  else img.src = src;
+}
+
+async function uploadPendingPhoto() {
+  if (!currentImageBlob) return null;
+  const b64str = await blobToBase64(currentImageBlob);
+  const base64 = b64str.split(',')[1];
+  const res = await gasCall('uploadPhoto', {
+    base64,
+    mimeType: currentImageBlob.type || 'image/jpeg',
+    filename: 'photo_' + Date.now() + '.jpg'
+  });
+  return res; // { ok, fileId, url }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Form Data
+// ═══════════════════════════════════════════════════════════════
+function getFormData() {
+  const group = currentMode === 'single' ? formSingle : formSet;
+  const payload = {};
+  group.querySelectorAll('[data-k]').forEach(i => {
+    const v = i.value?.trim();
+    if (v) payload[i.dataset.k] = v;
+  });
+  return payload;
+}
+
+function setFormData(item) {
+  [formSingle, formSet].forEach(g => g.querySelectorAll('[data-k]').forEach(i => i.value = ''));
+  const group = item.mode === 'set' ? formSet : formSingle;
+  Object.entries(item.parts || {}).forEach(([k, v]) => {
+    const el = group.querySelector(`[data-k="${k}"]`);
+    if (el) el.value = v;
+  });
+}
+
+function clearForm() {
+  editId = null; currentImageBlob = null; currentPhotoUrl = ''; currentPhotoFileId = '';
+  document.querySelectorAll('#page-form input:not(#barcodeInput),#page-form textarea').forEach(i => i.value = '');
+  barcodeInput.value = '';
+  loadImageToPreview(null);
+  drawBarcode(barcodeCanvas, '');
+  photoStatus.textContent = '';
+  editBadge.classList.add('hidden');
+}
+
+function toggleCompanyOther() {
+  if (company.value === 'ร้านค้าอื่นๆ') companyOther.classList.remove('hidden');
+  else { companyOther.classList.add('hidden'); companyOther.value = ''; }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Save to GAS
+// ═══════════════════════════════════════════════════════════════
+saveBtn.addEventListener('click', async () => {
+  if (!productName.value.trim())         return toast('⚠️ กรุณากรอกชื่อสินค้า');
+  if (!/^\d{9}$/.test(barcodeInput.value)) return toast('⚠️ กรุณากรอกบาร์โค้ด 9 หลัก');
+
+  showLoading('กำลังบันทึก…');
+  try {
+    let photoUrl    = currentPhotoUrl;
+    let photoFileId = currentPhotoFileId;
+
+    if (currentImageBlob) {
+      photoStatus.textContent = '⏳ กำลังอัปโหลดรูป…';
+      const uploaded = await uploadPendingPhoto();
+      if (uploaded && uploaded.ok) {
+        photoUrl    = uploaded.url;
+        photoFileId = uploaded.fileId;
+        currentImageBlob = null;
+      }
+    }
+
+    const companyVal = company.value === 'ร้านค้าอื่นๆ'
+      ? (companyOther.value.trim() || 'ร้านค้าอื่นๆ')
+      : company.value;
+
+    const item = {
+      ...(editId ? { id: editId } : {}),
+      company:       companyVal,
+      rawCompany:    company.value,
+      category:      category.value,
+      mode:          currentMode,
+      name:          productName.value.trim(),
+      size:          productSize.value.trim(),
+      barcode:       barcodeInput.value,
+      photoUrl,
+      photoFileId,
+      parts:         getFormData()
+    };
+
+    const res = await gasCall('save', item);
+    toast(editId ? '✅ แก้ไขเรียบร้อย' : '✅ บันทึกรายการใหม่แล้ว');
+    photoStatus.textContent = photoUrl ? '✅ รูปอัปโหลดแล้ว' : '';
+
+    // Remember suggestions
+    const sugFields = ['ชื่อสินค้า', 'ขนาด', ...Object.keys(item.parts)];
+    await Promise.allSettled([
+      gasCall('addSuggestion', { field: 'ชื่อสินค้า', value: item.name }),
+      gasCall('addSuggestion', { field: 'ขนาด',       value: item.size }),
+      ...Object.entries(item.parts).map(([k, v]) => gasCall('addSuggestion', { field: k, value: v }))
+    ]);
+
+    clearForm();
+    if (!editId) allItems.unshift({ ...item, id: res.id });
+  } catch (e) {
+    toast('❌ บันทึกไม่สำเร็จ: ' + e.message, 5000);
+  } finally {
+    hideLoading();
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  List
+// ═══════════════════════════════════════════════════════════════
+async function loadAllProducts() {
+  showLoading('กำลังโหลดรายการสินค้า…');
+  try {
+    const res = await gasCall('getAll');
+    allItems = res.data || [];
+    renderList();
+    listCount.textContent = `(${allItems.length} รายการ)`;
+  } catch (e) {
+    toast('❌ โหลดรายการไม่สำเร็จ: ' + e.message, 5000);
+  } finally {
+    hideLoading();
+  }
+}
+
+function filtered() {
+  let arr = [...allItems];
+  const comp = filterCompany.value;
+  const cat  = filterCategory.value;
+  const type = filterSingle.classList.contains('active') ? 'single' : 'set';
+  if (comp) arr = arr.filter(x => x.company === comp || x.rawCompany === comp);
+  if (cat)  arr = arr.filter(x => x.category === cat);
+  arr = arr.filter(x => x.mode === type);
+  const q = searchInput.value.trim();
+  if (q)    arr = arr.filter(x => x.name?.toLowerCase().includes(q.toLowerCase()));
+  return arr;
+}
+
+function renderList() {
+  const arr = filtered();
+  const max = Math.ceil(arr.length / PAGE_SIZE) || 1;
+  if (page > max) page = max;
+  pageNumber.textContent = String(page);
+  const slice = arr.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  listTableBody.innerHTML = '';
+  slice.forEach(item => {
+    const tr = document.createElement('tr');
+    tr.dataset.id = item.id;
+    tr.innerHTML = `
+      <td><input type="checkbox" class="rowSel"/></td>
+      <td>
+        <div class="preview" style="height:48px">
+          ${item.photoUrl ? `<img src="${item.photoUrl}" style="max-width:100%;max-height:100%;object-fit:contain"/>` : '—'}
+        </div>
+      </td>
+      <td>${item.name || ''}</td>
+      <td>${item.size || ''}</td>
+      <td>${item.company || ''}</td>
+      <td>
+        <div class="actions">
+          <div class="iconbtn act-edit" title="แก้ไข">✏️</div>
+          <div class="iconbtn act-del"  title="ลบ">❌</div>
+          <div class="iconbtn act-print" title="พิมพ์">🖨️</div>
+        </div>
+      </td>`;
+    tr.querySelector('.act-edit').onclick  = () => editItem(item);
+    tr.querySelector('.act-del').onclick   = () => deleteItem(item);
+    tr.querySelector('.act-print').onclick = () => printItems([item]);
+    listTableBody.appendChild(tr);
+  });
+  listCount.textContent = `(${arr.length} รายการ)`;
+}
+
+function editItem(item) {
+  editId = item.id;
+  document.querySelectorAll('.tab').forEach(t => { if (t.dataset.tab === 'form') t.click(); });
+  company.value    = item.rawCompany || item.company || '';
+  toggleCompanyOther();
+  if (company.value === 'ร้านค้าอื่นๆ') companyOther.value = item.company || '';
+  category.value   = item.category || '';
+  currentMode      = item.mode || 'single';
+  modeSeg.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.mode === currentMode));
+  formSingle.classList.toggle('hidden', currentMode !== 'single');
+  formSet.classList.toggle('hidden',    currentMode === 'single');
+  productName.value  = item.name    || '';
+  productSize.value  = item.size    || '';
+  barcodeInput.value = item.barcode || '';
+  drawBarcode(barcodeCanvas, item.barcode || '');
+  currentPhotoUrl    = item.photoUrl    || '';
+  currentPhotoFileId = item.photoFileId || '';
+  currentImageBlob   = null;
+  loadImageToPreview(item.photoUrl || null);
+  photoStatus.textContent = item.photoUrl ? '✅ มีรูปใน Drive แล้ว' : '';
+  setFormData(item);
+  editBadge.classList.remove('hidden');
+}
+
+async function deleteItem(item) {
+  if (!confirm('ลบรายการ "' + item.name + '"?')) return;
+  showLoading('กำลังลบ…');
+  try {
+    await gasCall('delete', { id: item.id });
+    if (item.photoFileId) {
+      await gasCall('deletePhoto', { fileId: item.photoFileId }).catch(() => {});
+    }
+    allItems = allItems.filter(x => x.id !== item.id);
+    renderList();
+    toast('🗑️ ลบเรียบร้อย');
+  } catch (e) {
+    toast('❌ ลบไม่สำเร็จ: ' + e.message, 5000);
+  } finally {
+    hideLoading();
+  }
+}
+
+function printItems(items) {
+  const container = document.createElement('div');
+  items.forEach(item => container.appendChild(buildPrintPage(item)));
+  openPrintWindow(container.innerHTML);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Events
+// ═══════════════════════════════════════════════════════════════
+// Tabs
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  const isForm = t.dataset.tab === 'form';
+  pageForm.classList.toggle('hidden', !isForm);
+  pageList.classList.toggle('hidden',  isForm);
+  if (!isForm) loadAllProducts();
+}));
+
+// Mode switch
+modeSeg.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
+  modeSeg.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentMode = btn.dataset.mode;
+  formSingle.classList.toggle('hidden', currentMode !== 'single');
+  formSet.classList.toggle('hidden',    currentMode === 'single');
+}));
+
+company.addEventListener('change', toggleCompanyOther);
+
+// Barcode
+barcodeInput.addEventListener('input', () => drawBarcode(barcodeCanvas, barcodeInput.value));
+
+// Upload
+uploader.addEventListener('click', () => fileInput.click());
+uploader.addEventListener('dragover',  e => { e.preventDefault(); uploader.style.background = '#f0f4ff'; });
+uploader.addEventListener('dragleave', () => uploader.style.background = '');
+uploader.addEventListener('drop', async e => {
+  e.preventDefault(); uploader.style.background = '';
+  if (e.dataTransfer.files[0]) {
+    try { currentImageBlob = await processImage(e.dataTransfer.files[0]); loadImageToPreview(currentImageBlob); photoStatus.textContent = '📎 รูปพร้อมอัปโหลด'; }
+    catch (err) { toast('โหลดรูปไม่สำเร็จ: ' + err); }
+  }
+});
+fileInput.addEventListener('change', async () => {
+  if (fileInput.files[0]) {
+    try { currentImageBlob = await processImage(fileInput.files[0]); loadImageToPreview(currentImageBlob); photoStatus.textContent = '📎 รูปพร้อมอัปโหลด'; }
+    catch (err) { toast('โหลดรูปไม่สำเร็จ: ' + err); }
+  }
+});
+document.addEventListener('paste', async e => {
+  if (pageForm.classList.contains('hidden')) return;
+  const dt = e.clipboardData; if (!dt) return;
+  let file = null;
+  if (dt.files && dt.files.length) file = Array.from(dt.files).find(f => f.type?.startsWith('image/'));
+  if (!file && dt.items) { const it = Array.from(dt.items).find(i => i.kind === 'file' && i.type?.startsWith('image/')); if (it) file = it.getAsFile(); }
+  if (!file) return;
+  e.preventDefault();
+  try { currentImageBlob = await processImage(file); loadImageToPreview(currentImageBlob); photoStatus.textContent = '📎 รูปพร้อมอัปโหลด'; }
+  catch (err) { toast('Paste รูปไม่สำเร็จ: ' + err); }
+});
+
+// Buttons
+clearBtn.addEventListener('click', clearForm);
+newBtn.addEventListener('click',   () => { clearForm(); toast('เริ่มกรอกสินค้าใหม่'); });
+printBtn.addEventListener('click', () => {
+  const item = {
+    name: productName.value, size: productSize.value,
+    company: company.value === 'ร้านค้าอื่นๆ' ? companyOther.value : company.value,
+    category: category.value, parts: getFormData(),
+    photoUrl: currentPhotoUrl,
+    _blobUrl: currentImageBlob ? URL.createObjectURL(currentImageBlob) : '',
+    barcode: barcodeInput.value
+  };
+  const container = document.createElement('div');
+  container.appendChild(buildPrintPage(item));
+  openPrintWindow(container.innerHTML);
+});
+
+// List controls
+document.getElementById('btnReloadList').onclick = loadAllProducts;
+prevPageBtn.onclick  = () => { if (page > 1) { page--; renderList(); } };
+nextPageBtn.onclick  = () => { const max = Math.ceil(filtered().length / PAGE_SIZE) || 1; if (page < max) { page++; renderList(); } };
+selectAll.onchange   = () => listTableBody.querySelectorAll('.rowSel').forEach(cb => cb.checked = selectAll.checked);
+filterCompany.onchange  = () => { page = 1; renderList(); };
+filterCategory.onchange = () => { page = 1; renderList(); };
+searchInput.oninput     = () => { page = 1; renderList(); };
+filterSingle.onclick = () => { filterSingle.classList.add('active'); filterSet.classList.remove('active'); page = 1; renderList(); };
+filterSet.onclick    = () => { filterSet.classList.add('active'); filterSingle.classList.remove('active'); page = 1; renderList(); };
+
+document.getElementById('bulkDelete').onclick = async () => {
+  const ids = [];
+  listTableBody.querySelectorAll('tr').forEach(tr => { if (tr.querySelector('.rowSel')?.checked) ids.push(tr.dataset.id); });
+  if (!ids.length) return toast('กรุณาเลือกรายการก่อน');
+  if (!confirm(`ลบ ${ids.length} รายการ?`)) return;
+  showLoading('กำลังลบ…');
+  try {
+    for (const id of ids) {
+      const item = allItems.find(x => String(x.id) === String(id));
+      await gasCall('delete', { id });
+      if (item?.photoFileId) await gasCall('deletePhoto', { fileId: item.photoFileId }).catch(() => {});
+    }
+    allItems = allItems.filter(x => !ids.includes(String(x.id)));
+    renderList();
+    toast(`🗑️ ลบ ${ids.length} รายการแล้ว`);
+  } catch (e) { toast('❌ ลบไม่สำเร็จ: ' + e.message, 5000); }
+  finally { hideLoading(); }
+};
+
+document.getElementById('bulkPrint').onclick = () => {
+  const ids = [];
+  listTableBody.querySelectorAll('tr').forEach(tr => { if (tr.querySelector('.rowSel')?.checked) ids.push(tr.dataset.id); });
+  if (!ids.length) return toast('กรุณาเลือกรายการก่อน');
+  const items = allItems.filter(x => ids.includes(String(x.id)));
+  printItems(items);
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  Init
+// ═══════════════════════════════════════════════════════════════
+(async function init() {
+  if (GAS_URL === 'YOUR_GAS_WEB_APP_URL') {
+    document.getElementById('gasBanner').classList.remove('hidden');
+    hideLoading();
+    return;
+  }
+  try {
+    showLoading('กำลังโหลด Dropdown จาก Google Sheet…');
+    await loadDropdowns();
+    toggleCompanyOther();
+    toast('✅ โหลด Dropdown สำเร็จ');
+  } catch (e) {
+    toast('⚠️ โหลด Dropdown ไม่ได้: ' + e.message, 5000);
+  } finally {
+    hideLoading();
+  }
+})();
+</script>
+</body>
+</html>
