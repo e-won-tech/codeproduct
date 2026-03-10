@@ -56,6 +56,22 @@
     .footerbtns{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
     .hidden{display:none!important}
 
+    /* Card View */
+    #cardGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+    @media(min-width:768px){#cardGrid{grid-template-columns:repeat(3,1fr)}}
+    .product-card{background:#fff;border:1px solid var(--bd);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
+    .product-card .card-img{width:100%;aspect-ratio:1/1;object-fit:contain;background:#f2f5fb;display:block}
+    .product-card .card-img-placeholder{width:100%;aspect-ratio:1/1;background:#f2f5fb;display:grid;place-items:center;color:#aaa;font-size:.85rem}
+    .product-card .card-body{padding:10px 12px;flex:1;display:flex;flex-direction:column;gap:4px}
+    .product-card .card-name{font-weight:700;font-size:.95rem;line-height:1.3;color:var(--ink)}
+    .product-card .card-size{font-size:.82rem;color:var(--muted)}
+    .product-card .card-company{font-size:.8rem;color:#2f6bff;background:#eef2ff;border-radius:999px;padding:2px 8px;width:fit-content;margin-top:2px}
+    .product-card .card-actions{display:flex;gap:6px;padding:8px 12px;border-top:1px solid var(--bd);background:#fafcff}
+    .product-card .card-actions .iconbtn{flex:1;border-radius:10px;height:34px;font-size:.85rem}
+    .view-toggle{display:flex;gap:6px}
+    .view-toggle button{width:36px;height:36px;border-radius:10px;border:1px solid var(--bd);background:#fff;cursor:pointer;display:grid;place-items:center;font-size:1rem}
+    .view-toggle button.active{background:#2f6bff;color:#fff;border-color:#2f6bff}
+
     /* Loading overlay */
     #loadingOverlay{position:fixed;inset:0;background:rgba(255,255,255,.75);backdrop-filter:blur(4px);display:grid;place-items:center;z-index:999}
     .spinner{width:48px;height:48px;border:5px solid #e0e7ff;border-top-color:#2f6bff;border-radius:50%;animation:spin .7s linear infinite}
@@ -205,7 +221,13 @@
     <div class="card">
       <div class="hd">
         ค้นหา / ตัวกรอง
-        <button id="btnReloadList" class="btn" style="font-size:.85rem;padding:6px 12px">🔄 โหลดใหม่</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="view-toggle">
+            <button id="btnViewTable" class="active" title="ตารางรายการ">☰</button>
+            <button id="btnViewCard" title="การ์ดรูป">⊞</button>
+          </div>
+          <button id="btnReloadList" class="btn" style="font-size:.85rem;padding:6px 12px">🔄 โหลดใหม่</button>
+        </div>
       </div>
       <div class="bd toolbar">
         <div class="field" style="min-width:220px">
@@ -231,9 +253,10 @@
     </div>
 
     <div class="card" style="margin-top:16px">
-      <div class="hd">ตารางรายการสินค้า <span id="listCount" class="hint"></span></div>
+      <div class="hd">รายการสินค้า <span id="listCount" class="hint"></span></div>
       <div class="bd">
-        <div style="overflow-x:auto">
+        <!-- Table View -->
+        <div id="tableView" style="overflow-x:auto">
           <table id="listTable">
             <thead>
               <tr>
@@ -247,6 +270,11 @@
             </thead>
             <tbody id="listTableBody"></tbody>
           </table>
+        </div>
+
+        <!-- Card View -->
+        <div id="cardView" class="hidden">
+          <div id="cardGrid"></div>
         </div>
 
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:10px">
@@ -281,7 +309,7 @@
 // ═══════════════════════════════════════════════════════════════
 //  ⚙️  ตั้งค่าตรงนี้ก่อนใช้งาน
 // ═══════════════════════════════════════════════════════════════
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbxT3264gCnEtLg1R12kEyijMYY_UHpNDtyevtnadTK-iB1CbKsEyVA5mcMn7QsBXB3p/exec';   // <-- ใส่ URL ที่ได้จาก Deploy
+const GAS_URL = 'https://script.google.com/macros/s/AKfycby3IG2MKhRV3F-z2oESgkx_iIrsHul2k12iaOvYMAZUSGEMHkELOEsCstDs7W4vg4wJ/exec';   // <-- ใส่ URL ที่ได้จาก Deploy
 
 const PAGE_SIZE = 50;
 
@@ -406,7 +434,8 @@ function buildPrintPage(item) {
   table.innerHTML = '<thead><tr><th>หัวข้อ</th><th>รายละเอียด</th></tr></thead><tbody>' +
     rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('') + '</tbody>';
   const bc = document.createElement('canvas'); bc.width = 360; bc.height = 80;
-  drawCode128(bc, item.barcode || '');
+  const barcodeStr = String(item.barcode || '').padStart(9, '0');
+  drawCode128(bc, barcodeStr);
   node.querySelector('[data-f="barcode"]').src = bc.toDataURL('image/png');
   return node;
 }
@@ -427,6 +456,7 @@ function openPrintWindow(html) {
 //  App State
 // ═══════════════════════════════════════════════════════════════
 let allItems    = [];   // สินค้าทั้งหมดจาก GAS
+let viewMode    = 'table'; // 'table' | 'card'
 let dropdowns   = {};   // { company:[], category:[], fields_single:[], fields_set:[] }
 let editId      = null;
 let currentMode = 'single';
@@ -470,6 +500,11 @@ const pageNumber     = document.getElementById('pageNumber');
 const selectAll      = document.getElementById('selectAll');
 const listTableBody  = document.getElementById('listTableBody');
 const listCount      = document.getElementById('listCount');
+const tableView      = document.getElementById('tableView');
+const cardView       = document.getElementById('cardView');
+const cardGrid       = document.getElementById('cardGrid');
+const btnViewTable   = document.getElementById('btnViewTable');
+const btnViewCard    = document.getElementById('btnViewCard');
 
 // ═══════════════════════════════════════════════════════════════
 //  Dropdown / Select helpers
@@ -695,6 +730,16 @@ function renderList() {
   if (page > max) page = max;
   pageNumber.textContent = String(page);
   const slice = arr.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  listCount.textContent = `(${arr.length} รายการ)`;
+
+  if (viewMode === 'card') {
+    renderCardView(slice);
+  } else {
+    renderTableView(slice);
+  }
+}
+
+function renderTableView(slice) {
   listTableBody.innerHTML = '';
   slice.forEach(item => {
     const tr = document.createElement('tr');
@@ -721,7 +766,33 @@ function renderList() {
     tr.querySelector('.act-print').onclick = () => printItems([item]);
     listTableBody.appendChild(tr);
   });
-  listCount.textContent = `(${arr.length} รายการ)`;
+}
+
+function renderCardView(slice) {
+  cardGrid.innerHTML = '';
+  slice.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'product-card';
+    card.dataset.id = item.id;
+    card.innerHTML = `
+      ${item.photoUrl
+        ? `<img class="card-img" src="${item.photoUrl}" loading="lazy"/>`
+        : `<div class="card-img-placeholder">ไม่มีรูป</div>`}
+      <div class="card-body">
+        <div class="card-name">${item.name || '—'}</div>
+        <div class="card-size">${item.size || ''}</div>
+        <div class="card-company">${item.company || ''}</div>
+      </div>
+      <div class="card-actions">
+        <div class="iconbtn act-edit" title="แก้ไข">✏️</div>
+        <div class="iconbtn act-del"  title="ลบ">❌</div>
+        <div class="iconbtn act-print" title="พิมพ์">🖨️</div>
+      </div>`;
+    card.querySelector('.act-edit').onclick  = () => editItem(item);
+    card.querySelector('.act-del').onclick   = () => deleteItem(item);
+    card.querySelector('.act-print').onclick = () => printItems([item]);
+    cardGrid.appendChild(card);
+  });
 }
 
 function editItem(item) {
@@ -737,8 +808,8 @@ function editItem(item) {
   formSet.classList.toggle('hidden',    currentMode === 'single');
   productName.value  = item.name    || '';
   productSize.value  = item.size    || '';
-  barcodeInput.value = item.barcode || '';
-  drawBarcode(barcodeCanvas, item.barcode || '');
+  barcodeInput.value = String(item.barcode || '').padStart(9, '0');
+  drawBarcode(barcodeCanvas, String(item.barcode || '').padStart(9, '0'));
   currentPhotoUrl    = item.photoUrl    || '';
   currentPhotoFileId = item.photoFileId || '';
   currentImageBlob   = null;
@@ -844,6 +915,35 @@ printBtn.addEventListener('click', () => {
   container.appendChild(buildPrintPage(item));
   openPrintWindow(container.innerHTML);
 });
+
+// View toggle
+function setViewMode(mode) {
+  viewMode = mode;
+  if (mode === 'card') {
+    tableView.classList.add('hidden');
+    cardView.classList.remove('hidden');
+    btnViewTable.classList.remove('active');
+    btnViewCard.classList.add('active');
+    // Card mode ไม่ใช้ bulk select ซ่อนไปก่อน
+    document.getElementById('bulkDelete').style.display = 'none';
+    document.getElementById('bulkPrint').style.display  = 'none';
+    selectAll.parentElement.closest('th') && (selectAll.closest('th').style.display = 'none');
+  } else {
+    tableView.classList.remove('hidden');
+    cardView.classList.add('hidden');
+    btnViewTable.classList.add('active');
+    btnViewCard.classList.remove('active');
+    document.getElementById('bulkDelete').style.display = '';
+    document.getElementById('bulkPrint').style.display  = '';
+  }
+  renderList();
+}
+
+btnViewTable.onclick = () => setViewMode('table');
+btnViewCard.onclick  = () => setViewMode('card');
+
+// Auto card view on small screen
+if (window.innerWidth < 640) setViewMode('card');
 
 // List controls
 document.getElementById('btnReloadList').onclick = loadAllProducts;
