@@ -26,14 +26,21 @@ header{position:sticky;top:0;z-index:50;background:rgba(246,247,251,.88);backdro
 .seg button{padding:8px 14px;border:none;background:#fff;cursor:pointer;font-family:'Sarabun',system-ui;font-size:.88rem;font-weight:600;white-space:nowrap}
 .seg button.active{background:var(--pri);color:#fff}
 .btn{display:inline-flex;align-items:center;gap:7px;padding:10px 15px;border-radius:13px;border:1px solid var(--bd);background:#fff;cursor:pointer;font-weight:600;font-family:'Sarabun',system-ui;font-size:.9rem;white-space:nowrap}
-.btn.primary{background:#d6e8b5;border-color:#c3d99e}
+.btn.primary{background:#d6e8b5;border-color:#c3d99e;color:#3f4d25}
+.btn.info{background:#eef2ff;border-color:#c7d2fe;color:#3730a3}
 .toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
 .toolbar .field{flex:1;min-width:160px}
 .toolbar .search{flex:2;min-width:200px}
+
+/* Checkbox Styles */
+.chk-box{width:18px;height:18px;cursor:pointer;accent-color:var(--pri)}
+
+/* Table Styles */
 table{width:100%;border-collapse:collapse;font-size:.92rem}
 thead th{background:#f4f6fb;padding:11px 13px;text-align:center;font-weight:700;border-bottom:2px solid var(--bd);white-space:nowrap}
 tbody td{padding:11px 13px;border-bottom:1px solid #f0f2f6;text-align:center;vertical-align:middle}
 tbody tr:hover{background:#fafcff}
+tbody tr.selected{background:#eef2ff}
 .thumb{width:48px;height:48px;border-radius:10px;overflow:hidden;background:#f2f5fb;border:1px solid var(--bd);display:grid;place-items:center;margin:0 auto}
 .thumb img{width:100%;height:100%;object-fit:contain}
 .thumb-empty{font-size:.7rem;color:#bbb}
@@ -45,7 +52,9 @@ tbody tr:hover{background:#fafcff}
 #cardGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
 @media(min-width:640px){#cardGrid{grid-template-columns:repeat(3,1fr)}}
 @media(min-width:1024px){#cardGrid{grid-template-columns:repeat(4,1fr)}}
-.product-card{background:#fff;border:1px solid var(--bd);border-radius:15px;box-shadow:var(--sh);overflow:hidden;display:flex;flex-direction:column}
+.product-card{position:relative;background:#fff;border:1px solid var(--bd);border-radius:15px;box-shadow:var(--sh);overflow:hidden;display:flex;flex-direction:column;transition:border .2s}
+.product-card.selected{border:2px solid var(--pri);box-shadow:0 0 0 3px rgba(47,107,255,.1)}
+.card-chk-wrap{position:absolute;top:10px;left:10px;background:#fff;border-radius:6px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.15);display:grid;place-items:center;z-index:10}
 .card-img{width:100%;aspect-ratio:1/1;object-fit:contain;background:#f2f5fb;display:block}
 .card-img-empty{width:100%;aspect-ratio:1/1;background:#f2f5fb;display:grid;place-items:center;color:#bbb;font-size:.8rem}
 .card-body{padding:10px 12px;flex:1;display:flex;flex-direction:column;gap:3px}
@@ -95,7 +104,7 @@ tbody tr:hover{background:#fafcff}
 /* Print */
 @page{size:A4 portrait;margin:0}
 @media print{
-  header,#filterCard,#listControlBar,#overlay,#toast,#previewModal{display:none!important}
+  header,#filterCard,#listControlBar,#overlay,#toast,#previewModal,#bulkPrintBar{display:none!important}
   body{background:#fff}
   .print-page{width:210mm;padding:16mm;margin:0 auto;break-after:page}
   .print-page:last-child{break-after:auto}
@@ -109,11 +118,20 @@ tbody tr:hover{background:#fafcff}
   .print-footer{display:flex;justify-content:space-between;margin-top:6mm;font-size:10pt;color:#444}
   .print-footer img{height:14mm}
 }
+
+/* Bulk Print Bar */
+#bulkPrintBar {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: #fff; padding: 12px 24px; border-radius: 999px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2); border: 2px solid var(--pri);
+    display: flex; gap: 16px; align-items: center; z-index: 100;
+    transition: opacity 0.3s, transform 0.3s;
+}
+#bulkPrintBar.hidden { opacity: 0; transform: translate(-50%, 20px); pointer-events: none; display: flex !important; }
 </style>
 </head>
 <body>
 
-<!-- Loading -->
 <div id="overlay">
   <div style="text-align:center">
     <div class="spinner"></div>
@@ -121,10 +139,8 @@ tbody tr:hover{background:#fafcff}
   </div>
 </div>
 
-<!-- Toast -->
 <div id="toast"></div>
 
-<!-- Header -->
 <header>
   <div class="header-inner">
     <div class="brand">
@@ -146,39 +162,48 @@ tbody tr:hover{background:#fafcff}
 
 <main class="wrap">
 
-  <!-- Filter -->
   <div class="card" id="filterCard">
-    <div class="hd">ค้นหา / ตัวกรอง <span id="listCount" style="font-size:.85rem;color:var(--muted)"></span></div>
-    <div class="bd toolbar">
-      <div class="field">
-        <label>ผลิตภัณฑ์ของ</label>
-        <select id="fCompany" class="select" onchange="render()"></select>
-      </div>
-      <div class="field">
-        <label>หมวดหมู่สาร</label>
-        <select id="fCategory" class="select" onchange="render()"></select>
-      </div>
-      <div class="field">
-        <label>ประเภท</label>
-        <div class="seg">
-          <button id="fSingle" class="active" onclick="setMode('single',this)">รายการเดี่ยว</button>
-          <button id="fSet" onclick="setMode('set',this)">รายการชุด</button>
+    <div class="bd" style="padding-bottom: 8px;">
+      <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap">
+        <div class="field search" style="flex:1; min-width:200px;">
+          <input id="fSearch" class="input" placeholder="🔍 ค้นหาชื่อสินค้า หรือ บาร์โค้ด..." oninput="render()"/>
         </div>
+        <button class="btn" id="toggleFilterBtn" onclick="toggleFilters()" style="background:#f2f5fb; border-color:#d0d8ef;">
+          ⚙️ ตัวกรองเพิ่มเติม
+        </button>
       </div>
-      <div class="field search">
-        <label>ค้นหาชื่อสินค้า</label>
-        <input id="fSearch" class="input" placeholder="พิมพ์เพื่อค้นหา…" oninput="render()"/>
+
+      <div id="extendedFilters" class="hidden" style="margin-top:16px; padding-top:16px; border-top:1px dashed var(--bd);">
+        <div class="toolbar">
+          <div class="field">
+            <label>รูปแบบรายการ</label>
+            <div class="seg">
+              <button id="fSingle" class="active" onclick="setMode('single',this)">รายการเดี่ยว</button>
+              <button id="fSet" onclick="setMode('set',this)">รายการชุด</button>
+            </div>
+          </div>
+          <div class="field"><label>ผลิตภัณฑ์ของ</label><select id="fCompany" class="select" onchange="render()"></select></div>
+          <div class="field"><label>หมวดหมู่สาร</label><select id="fCategory" class="select" onchange="render()"></select></div>
+          <div class="field"><label>บรรจุภัณฑ์</label><select id="fPackage" class="select" onchange="render()"></select></div>
+          <div class="field"><label>ฟิล์ม</label><select id="fFilm" class="select" onchange="render()"></select></div>
+          <div class="field"><label>ฝา</label><select id="fCap" class="select" onchange="render()"></select></div>
+          <div class="field"><label>ลังนอก</label><select id="fBox" class="select" onchange="render()"></select></div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Table View -->
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+    <span id="listCount" style="font-size:.9rem; font-weight:600; color:var(--muted)"></span>
+  </div>
+
   <div class="card" id="tableView">
     <div class="bd" style="padding:0">
       <div style="overflow-x:auto">
         <table>
           <thead>
             <tr>
+              <th style="width:40px"><input type="checkbox" class="chk-box" id="chkAllTable" onchange="toggleAllPage(this.checked)"></th>
               <th style="width:60px">รูป</th>
               <th>ชื่อสินค้า</th>
               <th style="width:140px">ขนาด</th>
@@ -190,21 +215,23 @@ tbody tr:hover{background:#fafcff}
         </table>
       </div>
       <div id="tableEmpty" class="hidden" style="text-align:center;padding:40px;color:var(--muted)">
-        <div style="font-size:2.5rem">📦</div>ไม่พบรายการสินค้า
+        <div style="font-size:2.5rem">📦</div>ไม่พบรายการสินค้าที่ตรงกับเงื่อนไข
       </div>
     </div>
   </div>
 
-  <!-- Card View -->
   <div id="cardView" class="hidden">
+    <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+      <input type="checkbox" class="chk-box" id="chkAllCard" onchange="toggleAllPage(this.checked)">
+      <label for="chkAllCard" style="font-size: .9rem; font-weight: 600;">เลือกทั้งหมดในหน้านี้</label>
+    </div>
     <div id="cardGrid"></div>
     <div id="cardEmpty" class="hidden" style="text-align:center;padding:40px;color:var(--muted)">
-      <div style="font-size:2.5rem">📦</div>ไม่พบรายการสินค้า
+      <div style="font-size:2.5rem">📦</div>ไม่พบรายการสินค้าที่ตรงกับเงื่อนไข
     </div>
   </div>
 
-  <!-- Pagination -->
-  <div id="listControlBar" style="display:flex;justify-content:flex-end;margin-top:4px">
+  <div id="listControlBar" style="display:flex;justify-content:flex-end;margin-top:10px">
     <div class="seg">
       <button id="prevPage">‹</button>
       <button id="pageNum" class="active">1</button>
@@ -214,7 +241,12 @@ tbody tr:hover{background:#fafcff}
 
 </main>
 
-<!-- Preview Modal -->
+<div id="bulkPrintBar" class="hidden">
+  <span style="font-weight: 600; color: #101828;">เลือกแล้ว <span id="selCount" style="color:var(--pri)">0</span> รายการ</span>
+  <button class="btn" onclick="clearSelection()">ยกเลิก</button>
+  <button class="btn primary" onclick="printSelectedItems()">🖨️ พิมพ์รายการที่เลือก</button>
+</div>
+
 <div id="previewModal">
   <div class="modal-box">
     <div class="modal-hd">
@@ -240,12 +272,11 @@ tbody tr:hover{background:#fafcff}
     </div>
     <div class="modal-ft">
       <button class="btn" id="modalClose2">ปิด</button>
-      <button class="btn primary" id="modalPrintBtn">🖨️ พิมพ์รายการ</button>
+      <button class="btn info" id="modalPrintBtn">🖨️ พิมพ์รายการนี้</button>
     </div>
   </div>
 </div>
 
-<!-- Print Template -->
 <template id="printTpl">
   <div class="print-page">
     <div class="print-h1">CODE PRODUCT</div>
@@ -267,7 +298,7 @@ tbody tr:hover{background:#fafcff}
 // ══════════════════════════════════════════════
 //  ⚙️  ตั้งค่า URL ที่นี่
 // ══════════════════════════════════════════════
-const GAS_URL   = 'https://script.google.com/macros/s/AKfycbx_uF3HejS_HckrkssC7z4R_sjfz-3lhq67jNbqS9VuDe6A-Mrom7B7iprGX0mH8FqR/exec';  // <-- ใส่ URL จาก Apps Script Deploy
+const GAS_URL   = 'https://script.google.com/macros/s/AKfycbyPiQZexAFLXWsveVAcrcSuxhSBtzPAkAR9TiQpCS-CViFji5pfuIgOBY7op-mOO4sQ/exec';
 const PAGE_SIZE = 50;
 
 // ══════════════════════════════════════════════
@@ -277,6 +308,7 @@ let allItems  = [];
 let filterMod = 'single';
 let viewMode  = 'table';
 let page      = 1;
+let selectedIds = new Set(); // เก็บ ID ที่ผู้ใช้ติ๊กเลือก
 
 // ══════════════════════════════════════════════
 //  Helpers
@@ -293,6 +325,16 @@ function showLoading(msg='กำลังโหลด…'){
   document.getElementById('overlay').classList.remove('hidden');
 }
 function hideLoading(){ document.getElementById('overlay').classList.add('hidden'); }
+
+// ── แปลงลิงก์รูปให้แสดงผลได้ ──
+function getSafeImageUrl(url) {
+  if (!url) return '';
+  var match = url.match(/id=([a-zA-Z0-9_-]+)/);
+  if (match && url.indexOf('drive.google.com/uc') !== -1) {
+    return 'https://lh3.googleusercontent.com/d/' + match[1];
+  }
+  return url;
+}
 
 async function gasCall(action, data={}){
   const res = await fetch(GAS_URL, {
@@ -333,7 +375,7 @@ function drawCode128(canvas, text){
 }
 
 // ══════════════════════════════════════════════
-//  Load data
+//  Load data & Setup Filters
 // ══════════════════════════════════════════════
 async function loadAll(){
   showLoading('กำลังโหลดรายการสินค้า…');
@@ -344,10 +386,26 @@ async function loadAll(){
     ]);
     allItems = prodRes.data || [];
 
-    // fill filter dropdowns
+    // Setup base dropdowns
     const dd = ddRes.data || {};
     fillSelect('fCompany',  dd.company  || [], true);
     fillSelect('fCategory', dd.category || [], true);
+
+    // Extract dynamic parts for new filters (บรรจุภัณฑ์, ฟิล์ม, ฝา, ลังนอก)
+    const pkgs = new Set(), films = new Set(), caps = new Set(), boxes = new Set();
+    allItems.forEach(item => {
+        if(item.parts) {
+            if(item.parts['บรรจุภัณฑ์']) pkgs.add(item.parts['บรรจุภัณฑ์']);
+            if(item.parts['ฟิล์ม']) films.add(item.parts['ฟิล์ม']);
+            if(item.parts['ฝา']) caps.add(item.parts['ฝา']);
+            if(item.parts['ลังนอก']) boxes.add(item.parts['ลังนอก']);
+        }
+    });
+    
+    fillSelect('fPackage', Array.from(pkgs).sort(), true);
+    fillSelect('fFilm', Array.from(films).sort(), true);
+    fillSelect('fCap', Array.from(caps).sort(), true);
+    fillSelect('fBox', Array.from(boxes).sort(), true);
 
     render();
     toast('✅ โหลด '+allItems.length+' รายการ');
@@ -364,17 +422,38 @@ function fillSelect(id, arr, withAll=false){
   arr.forEach(v=>el.innerHTML+=`<option value="${v}">${v}</option>`);
 }
 
+function toggleFilters() {
+    const ext = document.getElementById('extendedFilters');
+    if(ext.classList.contains('hidden')) {
+        ext.classList.remove('hidden');
+        document.getElementById('toggleFilterBtn').innerHTML = "🔼 ซ่อนตัวกรอง";
+    } else {
+        ext.classList.add('hidden');
+        document.getElementById('toggleFilterBtn').innerHTML = "⚙️ ตัวกรองเพิ่มเติม";
+    }
+}
+
 // ══════════════════════════════════════════════
 //  Filter + Render
 // ══════════════════════════════════════════════
 function filtered(){
   const comp = document.getElementById('fCompany').value;
   const cat  = document.getElementById('fCategory').value;
+  const pkg  = document.getElementById('fPackage').value;
+  const film = document.getElementById('fFilm').value;
+  const cap  = document.getElementById('fCap').value;
+  const box  = document.getElementById('fBox').value;
   const q    = (document.getElementById('fSearch').value||'').trim().toLowerCase();
+  
   let arr = allItems.filter(x=>x.mode===filterMod);
   if(comp) arr=arr.filter(x=>x.company===comp||x.rawCompany===comp);
   if(cat)  arr=arr.filter(x=>x.category===cat);
-  if(q)    arr=arr.filter(x=>(x.name||'').toLowerCase().includes(q));
+  if(pkg)  arr=arr.filter(x=>x.parts && x.parts['บรรจุภัณฑ์'] === pkg);
+  if(film) arr=arr.filter(x=>x.parts && x.parts['ฟิล์ม'] === film);
+  if(cap)  arr=arr.filter(x=>x.parts && x.parts['ฝา'] === cap);
+  if(box)  arr=arr.filter(x=>x.parts && x.parts['ลังนอก'] === box);
+  
+  if(q)    arr=arr.filter(x=>(x.name||'').toLowerCase().includes(q) || (x.barcode||'').includes(q));
   return arr;
 }
 
@@ -390,48 +469,74 @@ function render(){
   const max  = Math.ceil(arr.length/PAGE_SIZE)||1;
   if(page>max) page=max;
   document.getElementById('pageNum').textContent=String(page);
-  document.getElementById('listCount').textContent='('+arr.length+' รายการ)';
+  document.getElementById('listCount').textContent='(พบ '+arr.length+' รายการ)';
   const slice = arr.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE);
 
-  if(viewMode==='card') renderCards(slice, arr.length);
-  else renderTable(slice, arr.length);
+  // Reset check all state
+  document.getElementById('chkAllTable').checked = false;
+  document.getElementById('chkAllCard').checked = false;
+
+  if(viewMode==='card') renderCards(slice);
+  else renderTable(slice);
+  
+  updateBulkPrintBar();
 }
 
-function renderTable(slice, total){
+function renderTable(slice){
   document.getElementById('tableView').classList.remove('hidden');
   document.getElementById('cardView').classList.add('hidden');
   const body = document.getElementById('tableBody');
   body.innerHTML='';
   document.getElementById('tableEmpty').classList.toggle('hidden', slice.length>0);
+  
+  let allChecked = slice.length > 0;
+
   slice.forEach(item=>{
+    const isChecked = selectedIds.has(item.id);
+    if(!isChecked) allChecked = false;
+    
+    const safeUrl = getSafeImageUrl(item.photoUrl);
     const tr=document.createElement('tr');
+    if(isChecked) tr.classList.add('selected');
+    
     tr.innerHTML=`
-      <td><div class="thumb">${item.photoUrl?`<img src="${item.photoUrl}" loading="lazy"/>`:`<span class="thumb-empty">ไม่มีรูป</span>`}</div></td>
+      <td><input type="checkbox" class="chk-box item-chk" value="${item.id}" ${isChecked?'checked':''} onchange="toggleItem(this, '${item.id}')"></td>
+      <td><div class="thumb">${safeUrl?`<img src="${safeUrl}" loading="lazy"/>`:`<span class="thumb-empty">ไม่มีรูป</span>`}</div></td>
       <td style="text-align:left"><b>${item.name||''}</b></td>
       <td>${item.size||'—'}</td>
       <td style="font-size:.85rem">${item.company||''}</td>
       <td><div class="actions">
-        <div class="iconbtn" title="พรีวิว">👁️</div>
-        <div class="iconbtn" title="พิมพ์">🖨️</div>
+        <div class="iconbtn" title="พรีวิว" onclick='openModal(${JSON.stringify(item).replace(/'/g, "&apos;")})'>👁️</div>
+        <div class="iconbtn" title="พิมพ์" onclick='printItem(${JSON.stringify(item).replace(/'/g, "&apos;")})'>🖨️</div>
       </div></td>`;
-    tr.querySelectorAll('.iconbtn')[0].onclick=()=>openModal(item);
-    tr.querySelectorAll('.iconbtn')[1].onclick=()=>printItem(item);
     body.appendChild(tr);
   });
+  
+  if(slice.length > 0) document.getElementById('chkAllTable').checked = allChecked;
 }
 
-function renderCards(slice, total){
+function renderCards(slice){
   document.getElementById('tableView').classList.add('hidden');
   document.getElementById('cardView').classList.remove('hidden');
   const grid=document.getElementById('cardGrid');
   grid.innerHTML='';
   document.getElementById('cardEmpty').classList.toggle('hidden', slice.length>0);
+  
+  let allChecked = slice.length > 0;
+
   slice.forEach(item=>{
+    const isChecked = selectedIds.has(item.id);
+    if(!isChecked) allChecked = false;
+    
+    const safeUrl = getSafeImageUrl(item.photoUrl);
     const div=document.createElement('div');
-    div.className='product-card';
+    div.className = `product-card ${isChecked ? 'selected' : ''}`;
     div.innerHTML=`
-      ${item.photoUrl
-        ? `<img class="card-img" src="${item.photoUrl}" loading="lazy"/>`
+      <div class="card-chk-wrap">
+         <input type="checkbox" class="chk-box item-chk" value="${item.id}" ${isChecked?'checked':''} onchange="toggleItem(this, '${item.id}')">
+      </div>
+      ${safeUrl
+        ? `<img class="card-img" src="${safeUrl}" loading="lazy"/>`
         : `<div class="card-img-empty">📷 ไม่มีรูป</div>`}
       <div class="card-body">
         <div class="card-name">${item.name||'—'}</div>
@@ -439,31 +544,85 @@ function renderCards(slice, total){
         <div class="card-company">${item.company||''}</div>
       </div>
       <div class="card-footer">
-        <div class="iconbtn" title="พรีวิว" style="flex:1">👁️</div>
-        <div class="iconbtn" title="พิมพ์" style="flex:1">🖨️</div>
+        <div class="iconbtn" title="พรีวิว" style="flex:1" onclick='openModal(${JSON.stringify(item).replace(/'/g, "&apos;")})'>👁️</div>
+        <div class="iconbtn" title="พิมพ์" style="flex:1" onclick='printItem(${JSON.stringify(item).replace(/'/g, "&apos;")})'>🖨️</div>
       </div>`;
-    div.querySelectorAll('.iconbtn')[0].onclick=()=>openModal(item);
-    div.querySelectorAll('.iconbtn')[1].onclick=()=>printItem(item);
     grid.appendChild(div);
   });
+  
+  if(slice.length > 0) document.getElementById('chkAllCard').checked = allChecked;
+}
+
+// ══════════════════════════════════════════════
+//  Checkbox Logic
+// ══════════════════════════════════════════════
+function toggleItem(checkbox, id) {
+    if(checkbox.checked) selectedIds.add(id);
+    else selectedIds.delete(id);
+    
+    // Update visual highlighting for rows/cards
+    const parent = checkbox.closest('tr') || checkbox.closest('.product-card');
+    if(parent) {
+        if(checkbox.checked) parent.classList.add('selected');
+        else parent.classList.remove('selected');
+    }
+    
+    updateBulkPrintBar();
+}
+
+function toggleAllPage(isChecked) {
+    const checkboxes = document.querySelectorAll('.item-chk');
+    checkboxes.forEach(chk => {
+        chk.checked = isChecked;
+        if(isChecked) selectedIds.add(chk.value);
+        else selectedIds.delete(chk.value);
+        
+        const parent = chk.closest('tr') || chk.closest('.product-card');
+        if(parent) {
+            if(isChecked) parent.classList.add('selected');
+            else parent.classList.remove('selected');
+        }
+    });
+    
+    // Sync table and card main checkboxes
+    document.getElementById('chkAllTable').checked = isChecked;
+    document.getElementById('chkAllCard').checked = isChecked;
+    
+    updateBulkPrintBar();
+}
+
+function clearSelection() {
+    selectedIds.clear();
+    render();
+}
+
+function updateBulkPrintBar() {
+    const bar = document.getElementById('bulkPrintBar');
+    const countSpan = document.getElementById('selCount');
+    countSpan.textContent = selectedIds.size;
+    
+    if(selectedIds.size > 0) bar.classList.remove('hidden');
+    else bar.classList.add('hidden');
 }
 
 // ══════════════════════════════════════════════
 //  Preview Modal
 // ══════════════════════════════════════════════
+let currentModalItem = null;
 function openModal(item){
+  currentModalItem = item;
   document.getElementById('modalTitle').textContent = item.name||'พรีวิวสินค้า';
   document.getElementById('mName').textContent     = item.name    ||'—';
   document.getElementById('mSize').textContent     = item.size    ||'—';
   document.getElementById('mCompany').textContent  = item.company ||'—';
   document.getElementById('mCategory').textContent = item.category||'—';
 
-  // รูป
+  const safeUrl = getSafeImageUrl(item.photoUrl);
   const photoWrap=document.getElementById('modalPhotoWrap');
   photoWrap.innerHTML='';
-  if(item.photoUrl){
+  if(safeUrl){
     const img=document.createElement('img');
-    img.className='modal-photo'; img.src=item.photoUrl;
+    img.className='modal-photo'; img.src=safeUrl;
     photoWrap.appendChild(img);
   } else {
     photoWrap.innerHTML='<div class="modal-photo-empty">📷 ไม่มีรูปสินค้า</div>';
@@ -489,9 +648,6 @@ function openModal(item){
   setTimeout(()=>drawCode128(bc,barcodeStr),50);
   document.getElementById('mBarcodeNum').textContent=barcodeStr;
 
-  // Print button
-  document.getElementById('modalPrintBtn').onclick=()=>{ closeModal(); printItem(item); };
-
   document.querySelector('.modal-scroll').scrollTop=0;
   document.getElementById('previewModal').classList.add('open');
 }
@@ -500,10 +656,15 @@ function closeModal(){
   document.getElementById('previewModal').classList.remove('open');
 }
 
+document.getElementById('modalPrintBtn').onclick=()=>{ 
+    closeModal(); 
+    if(currentModalItem) printItem(currentModalItem); 
+};
+
 // ══════════════════════════════════════════════
-//  Print
+//  Print Logic (Single & Bulk)
 // ══════════════════════════════════════════════
-function printItem(item){
+function buildPrintNode(item) {
   const tpl=document.getElementById('printTpl');
   const node=tpl.content.cloneNode(true);
   node.querySelector('[data-f="company"]').textContent  = item.company  ||'';
@@ -513,7 +674,8 @@ function printItem(item){
   node.querySelector('[data-f="printed"]').textContent  = new Date().toLocaleString('th-TH');
 
   const img=node.querySelector('[data-f="photo"]');
-  if(item.photoUrl) img.src=item.photoUrl; else img.remove();
+  const safeUrl = getSafeImageUrl(item.photoUrl);
+  if(safeUrl) img.src=safeUrl; else img.remove();
 
   const table=node.querySelector('[data-f="table"]');
   const rows=Object.entries(item.parts||{}).filter(([,v])=>v&&String(v).trim());
@@ -523,18 +685,35 @@ function printItem(item){
   const bc=document.createElement('canvas'); bc.width=360; bc.height=80;
   drawCode128(bc, String(item.barcode||'').padStart(9,'0'));
   node.querySelector('[data-f="barcode"]').src=bc.toDataURL('image/png');
+  
+  return node;
+}
 
-  const container=document.createElement('div');
-  container.appendChild(node);
-
+function execPrint(containerHTML) {
   const w=window.open('','_blank');
   if(!w){alert('โปรดอนุญาตป๊อปอัปก่อน');return;}
-  w.document.write(`<html><head><title>พิมพ์</title>
+  w.document.write(`<html><head><title>พิมพ์รายการสินค้า</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
     <style>${document.querySelector('style').innerHTML}</style>
-    </head><body>${container.innerHTML}</body></html>`);
+    </head><body>${containerHTML}</body></html>`);
   w.document.close(); w.focus();
-  setTimeout(()=>{w.print();w.close();},600);
+  setTimeout(()=>{w.print();w.close();}, 1500); // Wait for images
+}
+
+function printItem(item){
+  const container=document.createElement('div');
+  container.appendChild(buildPrintNode(item));
+  execPrint(container.innerHTML);
+}
+
+function printSelectedItems() {
+  if(selectedIds.size === 0) return;
+  const itemsToPrint = allItems.filter(x => selectedIds.has(x.id));
+  const container=document.createElement('div');
+  itemsToPrint.forEach(item => {
+      container.appendChild(buildPrintNode(item));
+  });
+  execPrint(container.innerHTML);
 }
 
 // ══════════════════════════════════════════════
@@ -555,7 +734,13 @@ document.getElementById('btnCard').onclick=()=>{
 };
 
 // Auto card on mobile
-if(window.innerWidth<640){ viewMode='card'; document.getElementById('btnCard').classList.add('active'); document.getElementById('btnTable').classList.remove('active'); }
+if(window.innerWidth<640){ 
+    viewMode='card'; 
+    document.getElementById('btnCard').classList.add('active'); 
+    document.getElementById('btnTable').classList.remove('active'); 
+    // Auto collapse filter on small screen
+    document.getElementById('extendedFilters').classList.add('hidden');
+}
 
 // Pagination
 document.getElementById('prevPage').onclick=()=>{if(page>1){page--;render();}};
