@@ -457,7 +457,7 @@ function filtered(){
   if(cap)  arr=arr.filter(x=>x.parts && x.parts['ฝา'] === cap);
   if(box)  arr=arr.filter(x=>x.parts && x.parts['ลังนอก'] === box);
   
-  if(q)    arr=arr.filter(x=>(x.name||'').toLowerCase().includes(q) || (x.barcode||'').includes(q));
+  if(q) arr=arr.filter(x=>(x.name||'').toLowerCase().includes(q) || String(x.barcode||'').includes(q));
   return arr;
 }
 
