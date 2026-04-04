@@ -298,7 +298,7 @@ tbody tr.selected{background:#eef2ff}
 // ══════════════════════════════════════════════
 //  ⚙️  ตั้งค่า URL ที่นี่
 // ══════════════════════════════════════════════
-const GAS_URL   = 'https://script.google.com/macros/s/AKfycbx_uF3HejS_HckrkssC7z4R_sjfz-3lhq67jNbqS9VuDe6A-Mrom7B7iprGX0mH8FqR/exec';
+const GAS_URL   = 'https://script.google.com/macros/s/AKfycbyC5yppZfq51g-fO7yXOqKpwoZpnx3fYc0LgzGTOqfa2UQgWzycU_tilD44thyritCR/exec';
 const PAGE_SIZE = 50;
 
 // ══════════════════════════════════════════════
@@ -446,6 +446,10 @@ function filtered(){
   const q    = (document.getElementById('fSearch').value||'').trim().toLowerCase();
   
   let arr = allItems.filter(x=>x.mode===filterMod);
+  
+  // 🟢 ส่วนที่เพิ่มใหม่: กรองเอารายการที่ถูกตั้งสถานะว่า 'hidden' ออกไป ไม่ให้แสดงผล
+  arr = arr.filter(x => x.status !== 'hidden');
+  
   if(comp) arr=arr.filter(x=>x.company===comp||x.rawCompany===comp);
   if(cat)  arr=arr.filter(x=>x.category===cat);
   if(pkg)  arr=arr.filter(x=>x.parts && x.parts['บรรจุภัณฑ์'] === pkg);
