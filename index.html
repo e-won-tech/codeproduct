@@ -380,20 +380,22 @@ function drawCode128(canvas, text){
 async function loadAll(){
   showLoading('กำลังโหลดรายการสินค้า…');
   try{
-    const [prodRes, ddRes] = await Promise.all([
-      gasCall('getAll'),
-      gasCall('getDropdowns')
-    ]);
+    // โหลดเฉพาะข้อมูลสินค้าก็พอ ไม่ต้องพึ่งชีท Settings แล้ว
+    const prodRes = await gasCall('getAll'); 
     allItems = prodRes.data || [];
 
-    // Setup base dropdowns
-    const dd = ddRes.data || {};
-    fillSelect('fCompany',  dd.company  || [], true);
-    fillSelect('fCategory', dd.category || [], true);
-
-    // Extract dynamic parts for new filters (บรรจุภัณฑ์, ฟิล์ม, ฝา, ลังนอก)
+    // เตรียมตัวแปรเก็บตัวเลือกแบบไม่ซ้ำกัน
+    const comps = new Set(), cats = new Set();
     const pkgs = new Set(), films = new Set(), caps = new Set(), boxes = new Set();
+    
+    // กวาดข้อมูลจากสินค้าทั้งหมดที่มีมาสร้างเป็น Dropdown
     allItems.forEach(item => {
+        // ถ้ารายการโดนซ่อนอยู่ ไม่ต้องเอามาสร้างตัวเลือก
+        if(item.status === 'hidden') return; 
+        
+        if(item.company) comps.add(item.company);
+        if(item.category) cats.add(item.category);
+        
         if(item.parts) {
             if(item.parts['บรรจุภัณฑ์']) pkgs.add(item.parts['บรรจุภัณฑ์']);
             if(item.parts['ฟิล์ม']) films.add(item.parts['ฟิล์ม']);
@@ -402,6 +404,9 @@ async function loadAll(){
         }
     });
     
+    // นำค่าที่กวาดได้ไปยัดใส่ Dropdown
+    fillSelect('fCompany', Array.from(comps).sort(), true);
+    fillSelect('fCategory', Array.from(cats).sort(), true);
     fillSelect('fPackage', Array.from(pkgs).sort(), true);
     fillSelect('fFilm', Array.from(films).sort(), true);
     fillSelect('fCap', Array.from(caps).sort(), true);
