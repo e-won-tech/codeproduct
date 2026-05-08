@@ -128,6 +128,16 @@ tbody tr.selected{background:#eef2ff}
     transition: opacity 0.3s, transform 0.3s;
 }
 #bulkPrintBar.hidden { opacity: 0; transform: translate(-50%, 20px); pointer-events: none; display: flex !important; }
+
+/* 🟢 ปุ่มสลับรูปสินค้า/เนื้อยา (เพิ่มใหม่) */
+.img-toggle-badge {
+   position: absolute; bottom: 8px; right: 8px;
+   background: #fff; border: 2px solid var(--pri); color: var(--pri);
+   border-radius: 999px; padding: 4px 10px; font-size: .8rem; font-weight: 700;
+   cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.15); z-index: 10;
+   display: flex; align-items: center; transition: all 0.2s;
+}
+.img-toggle-badge:hover { background: var(--pri); color: #fff; transform: scale(1.05); }
 </style>
 </head>
 <body>
@@ -296,9 +306,9 @@ tbody tr.selected{background:#eef2ff}
 
 <script>
 // ══════════════════════════════════════════════
-//  ⚙️  ตั้งค่า URL ที่นี่
+//  ⚙️  ตั้งค่า URL ที่นี่ (⚠️ อย่าลืมแก้ให้เป็นลิงก์ของคุณ)
 // ══════════════════════════════════════════════
-const GAS_URL   = 'https://script.google.com/macros/s/AKfycbzQyoXACIeuH6MweFFxGxkoIejaixq-_4_D1QXvfqSmSpy3nbNktFrFfVGxcTQIbqcC/exec';
+const GAS_URL   = 'https://script.google.com/macros/s/AKfycbyOfWN_I5SSNnKANEcQCzomdplpEVak9zBn3F8Fr0kPGbDMj4dMAqpv4mOFm79St68u/exec';
 const PAGE_SIZE = 50;
 
 // ══════════════════════════════════════════════
@@ -308,11 +318,26 @@ let allItems  = [];
 let filterMod = 'single';
 let viewMode  = 'table';
 let page      = 1;
-let selectedIds = new Set(); // เก็บ ID ที่ผู้ใช้ติ๊กเลือก
+let selectedIds = new Set(); 
 
 // ══════════════════════════════════════════════
-//  Helpers
+//  Helpers & โค้ดสลับรูป (เพิ่มใหม่ 🟢)
 // ══════════════════════════════════════════════
+window.swapImg = function(e, imgId, mainUrl, contentUrl) {
+    e.stopPropagation(); 
+    var img = document.getElementById(imgId);
+    var btn = e.currentTarget;
+    if (img.src === mainUrl) { 
+        img.src = contentUrl; 
+        btn.innerHTML = '📦 ดูแพ็กเกจ'; 
+        btn.style.borderColor = '#f59e0b'; btn.style.color = '#f59e0b'; 
+    } else { 
+        img.src = mainUrl; 
+        btn.innerHTML = '💧 ดูเนื้อยา'; 
+        btn.style.borderColor = 'var(--pri)'; btn.style.color = 'var(--pri)'; 
+    }
+};
+
 let toastTimer;
 function toast(msg, ms=2800){
   const el=document.getElementById('toast');
@@ -326,7 +351,6 @@ function showLoading(msg='กำลังโหลด…'){
 }
 function hideLoading(){ document.getElementById('overlay').classList.add('hidden'); }
 
-// ── แปลงลิงก์รูปให้แสดงผลได้ ──
 function getSafeImageUrl(url) {
   if (!url) return '';
   var match = url.match(/id=([a-zA-Z0-9_-]+)/);
@@ -375,23 +399,19 @@ function drawCode128(canvas, text){
 }
 
 // ══════════════════════════════════════════════
-//  Load data & Setup Filters
+//  Load data & Setup Filters (🟢 อัปเดตกรองรายการซ่อนแล้ว)
 // ══════════════════════════════════════════════
 async function loadAll(){
   showLoading('กำลังโหลดรายการสินค้า…');
   try{
-    // โหลดเฉพาะข้อมูลสินค้าก็พอ ไม่ต้องพึ่งชีท Settings แล้ว
     const prodRes = await gasCall('getAll'); 
     allItems = prodRes.data || [];
 
-    // เตรียมตัวแปรเก็บตัวเลือกแบบไม่ซ้ำกัน
     const comps = new Set(), cats = new Set();
     const pkgs = new Set(), films = new Set(), caps = new Set(), boxes = new Set();
     
-    // กวาดข้อมูลจากสินค้าทั้งหมดที่มีมาสร้างเป็น Dropdown
     allItems.forEach(item => {
-        // ถ้ารายการโดนซ่อนอยู่ ไม่ต้องเอามาสร้างตัวเลือก
-        if(item.status === 'hidden') return; 
+        if(item.status === 'hidden') return; // ข้ามรายการที่ซ่อน
         
         if(item.company) comps.add(item.company);
         if(item.category) cats.add(item.category);
@@ -404,7 +424,6 @@ async function loadAll(){
         }
     });
     
-    // นำค่าที่กวาดได้ไปยัดใส่ Dropdown
     fillSelect('fCompany', Array.from(comps).sort(), true);
     fillSelect('fCategory', Array.from(cats).sort(), true);
     fillSelect('fPackage', Array.from(pkgs).sort(), true);
@@ -451,9 +470,7 @@ function filtered(){
   const q    = (document.getElementById('fSearch').value||'').trim().toLowerCase();
   
   let arr = allItems.filter(x=>x.mode===filterMod);
-  
-  // 🟢 ส่วนที่เพิ่มใหม่: กรองเอารายการที่ถูกตั้งสถานะว่า 'hidden' ออกไป ไม่ให้แสดงผล
-  arr = arr.filter(x => x.status !== 'hidden');
+  arr = arr.filter(x => x.status !== 'hidden'); // 🟢 กรองรายการที่ถูกซ่อนทิ้ง
   
   if(comp) arr=arr.filter(x=>x.company===comp||x.rawCompany===comp);
   if(cat)  arr=arr.filter(x=>x.category===cat);
@@ -462,6 +479,7 @@ function filtered(){
   if(cap)  arr=arr.filter(x=>x.parts && x.parts['ฝา'] === cap);
   if(box)  arr=arr.filter(x=>x.parts && x.parts['ลังนอก'] === box);
   
+  // 🟢 แก้บั๊กค้นหาบาร์โค้ดแล้ว
   if(q) arr=arr.filter(x=>(x.name||'').toLowerCase().includes(q) || String(x.barcode||'').includes(q));
   return arr;
 }
@@ -481,7 +499,6 @@ function render(){
   document.getElementById('listCount').textContent='(พบ '+arr.length+' รายการ)';
   const slice = arr.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE);
 
-  // Reset check all state
   document.getElementById('chkAllTable').checked = false;
   document.getElementById('chkAllCard').checked = false;
 
@@ -515,8 +532,8 @@ function renderTable(slice){
       <td>${item.size||'—'}</td>
       <td style="font-size:.85rem">${item.company||''}</td>
       <td><div class="actions">
-        <div class="iconbtn" title="พรีวิว" onclick='openModal(${JSON.stringify(item).replace(/'/g, "&apos;")})'>👁️</div>
-        <div class="iconbtn" title="พิมพ์" onclick='printItem(${JSON.stringify(item).replace(/'/g, "&apos;")})'>🖨️</div>
+        <div class="iconbtn" title="พรีวิว" onclick='openModal(${JSON.stringify(item).replace(/'/g, "&#39;")})'>👁️</div>
+        <div class="iconbtn" title="พิมพ์" onclick='printItem(${JSON.stringify(item).replace(/'/g, "&#39;")})'>🖨️</div>
       </div></td>`;
     body.appendChild(tr);
   });
@@ -538,23 +555,28 @@ function renderCards(slice){
     if(!isChecked) allChecked = false;
     
     const safeUrl = getSafeImageUrl(item.photoUrl);
+    const safeContentUrl = getSafeImageUrl(item.contentPhotoUrl); // 🟢 ดึงรูปเนื้อยา
+
     const div=document.createElement('div');
     div.className = `product-card ${isChecked ? 'selected' : ''}`;
+    
+    // 🟢 ใส่โครงสร้างสลับรูปเนื้อยา
     div.innerHTML=`
       <div class="card-chk-wrap">
          <input type="checkbox" class="chk-box item-chk" value="${item.id}" ${isChecked?'checked':''} onchange="toggleItem(this, '${item.id}')">
       </div>
-      ${safeUrl
-        ? `<img class="card-img" src="${safeUrl}" loading="lazy"/>`
-        : `<div class="card-img-empty">📷 ไม่มีรูป</div>`}
+      <div style="position:relative;">
+          ${safeUrl ? `<img id="crd_img_${item.id}" class="card-img" src="${safeUrl}" loading="lazy"/>` : `<div class="card-img-empty">📷 ไม่มีรูป</div>`}
+          ${safeContentUrl ? `<div class="img-toggle-badge" onclick="swapImg(event, 'crd_img_${item.id}', '${safeUrl}', '${safeContentUrl}')">💧 ดูเนื้อยา</div>` : ''}
+      </div>
       <div class="card-body">
         <div class="card-name">${item.name||'—'}</div>
         <div class="card-size">${item.size||''}</div>
         <div class="card-company">${item.company||''}</div>
       </div>
       <div class="card-footer">
-        <div class="iconbtn" title="พรีวิว" style="flex:1" onclick='openModal(${JSON.stringify(item).replace(/'/g, "&apos;")})'>👁️</div>
-        <div class="iconbtn" title="พิมพ์" style="flex:1" onclick='printItem(${JSON.stringify(item).replace(/'/g, "&apos;")})'>🖨️</div>
+        <div class="iconbtn" title="พรีวิว" style="flex:1" onclick='openModal(${JSON.stringify(item).replace(/'/g, "&#39;")})'>👁️</div>
+        <div class="iconbtn" title="พิมพ์" style="flex:1" onclick='printItem(${JSON.stringify(item).replace(/'/g, "&#39;")})'>🖨️</div>
       </div>`;
     grid.appendChild(div);
   });
@@ -569,13 +591,11 @@ function toggleItem(checkbox, id) {
     if(checkbox.checked) selectedIds.add(id);
     else selectedIds.delete(id);
     
-    // Update visual highlighting for rows/cards
     const parent = checkbox.closest('tr') || checkbox.closest('.product-card');
     if(parent) {
         if(checkbox.checked) parent.classList.add('selected');
         else parent.classList.remove('selected');
     }
-    
     updateBulkPrintBar();
 }
 
@@ -592,11 +612,8 @@ function toggleAllPage(isChecked) {
             else parent.classList.remove('selected');
         }
     });
-    
-    // Sync table and card main checkboxes
     document.getElementById('chkAllTable').checked = isChecked;
     document.getElementById('chkAllCard').checked = isChecked;
-    
     updateBulkPrintBar();
 }
 
@@ -609,7 +626,6 @@ function updateBulkPrintBar() {
     const bar = document.getElementById('bulkPrintBar');
     const countSpan = document.getElementById('selCount');
     countSpan.textContent = selectedIds.size;
-    
     if(selectedIds.size > 0) bar.classList.remove('hidden');
     else bar.classList.add('hidden');
 }
@@ -627,17 +643,23 @@ function openModal(item){
   document.getElementById('mCategory').textContent = item.category||'—';
 
   const safeUrl = getSafeImageUrl(item.photoUrl);
+  const safeContentUrl = getSafeImageUrl(item.contentPhotoUrl); // 🟢 ดึงรูปเนื้อยา
+
   const photoWrap=document.getElementById('modalPhotoWrap');
   photoWrap.innerHTML='';
+  
+  // 🟢 ใส่ปุ่มสลับรูปในหน้าต่าง Modal
   if(safeUrl){
-    const img=document.createElement('img');
-    img.className='modal-photo'; img.src=safeUrl;
-    photoWrap.appendChild(img);
+    photoWrap.innerHTML = `
+      <div style="position:relative;">
+        <img id="modal_img" class="modal-photo" src="${safeUrl}"/>
+        ${safeContentUrl ? `<div class="img-toggle-badge" onclick="swapImg(event, 'modal_img', '${safeUrl}', '${safeContentUrl}')">💧 ดูเนื้อยา</div>` : ''}
+      </div>
+    `;
   } else {
     photoWrap.innerHTML='<div class="modal-photo-empty">📷 ไม่มีรูปสินค้า</div>';
   }
 
-  // Parts table
   const partsWrap=document.getElementById('mPartsWrap');
   const rows=Object.entries(item.parts||{}).filter(([,v])=>v&&String(v).trim());
   if(rows.length){
@@ -651,7 +673,6 @@ function openModal(item){
     partsWrap.innerHTML='<div style="font-size:.85rem;color:#bbb">ไม่มีรายละเอียดส่วนประกอบ</div>';
   }
 
-  // Barcode
   const barcodeStr=String(item.barcode||'').padStart(9,'0');
   const bc=document.getElementById('mBarcodeCanvas');
   setTimeout(()=>drawCode128(bc,barcodeStr),50);
@@ -706,7 +727,7 @@ function execPrint(containerHTML) {
     <style>${document.querySelector('style').innerHTML}</style>
     </head><body>${containerHTML}</body></html>`);
   w.document.close(); w.focus();
-  setTimeout(()=>{w.print();w.close();}, 1500); // Wait for images
+  setTimeout(()=>{w.print();w.close();}, 1500); 
 }
 
 function printItem(item){
@@ -728,7 +749,6 @@ function printSelectedItems() {
 // ══════════════════════════════════════════════
 //  Events
 // ══════════════════════════════════════════════
-// View toggle
 document.getElementById('btnTable').onclick=()=>{
   viewMode='table';
   document.getElementById('btnTable').classList.add('active');
@@ -742,23 +762,19 @@ document.getElementById('btnCard').onclick=()=>{
   render();
 };
 
-// Auto card on mobile
 if(window.innerWidth<640){ 
     viewMode='card'; 
     document.getElementById('btnCard').classList.add('active'); 
     document.getElementById('btnTable').classList.remove('active'); 
-    // Auto collapse filter on small screen
     document.getElementById('extendedFilters').classList.add('hidden');
 }
 
-// Pagination
 document.getElementById('prevPage').onclick=()=>{if(page>1){page--;render();}};
 document.getElementById('nextPage').onclick=()=>{
   const max=Math.ceil(filtered().length/PAGE_SIZE)||1;
   if(page<max){page++;render();}
 };
 
-// Modal close
 document.getElementById('modalClose').onclick  = closeModal;
 document.getElementById('modalClose2').onclick = closeModal;
 document.getElementById('previewModal').addEventListener('click',e=>{
