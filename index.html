@@ -111,8 +111,8 @@ tbody tr.selected{background:#eef2ff}
   .print-h1{font-weight:700;font-size:18pt;margin-bottom:4mm}
   .print-meta{margin:2mm 0}
   .print-titlebar{border:1px solid #ddd;border-radius:2mm;padding:4mm;margin:4mm 0 2mm;background:#fafafa}
-  .print-hero{border:1px solid #ddd;display:grid;place-items:center;margin:2mm 0 4mm;background:#fff;width:300px;height:300px;margin-left:auto;margin-right:auto}
-  .print-hero img{width:300px;height:300px;object-fit:contain}
+  .print-hero{display:flex;justify-content:center;gap:12px;margin:4mm auto;height:240px;width:100%}
+  .print-hero img{max-width:calc(50% - 6px);height:100%;object-fit:contain;border:1px solid #ddd;border-radius:8px;padding:4px;background:#fff}
   .print-table{width:100%;border-collapse:collapse;font-size:11pt;margin-top:4mm}
   .print-table th,.print-table td{border:1px solid #444;padding:6px}
   .print-footer{display:flex;justify-content:space-between;margin-top:6mm;font-size:10pt;color:#444}
@@ -295,7 +295,10 @@ tbody tr.selected{background:#eef2ff}
       <div><b>ชื่อสินค้า:</b> <span data-f="name"></span></div>
       <div><b>ขนาด:</b> <span data-f="size"></span></div>
     </div>
-    <div class="print-hero"><img data-f="photo" style="max-width:100%;max-height:100%"/></div>
+    <div class="print-hero" data-f="hero-wrap">
+      <img data-f="photo"/>
+      <img data-f="content-photo"/>
+    </div>
     <table class="print-table" data-f="table"></table>
     <div class="print-footer">
       <span>พิมพ์เมื่อ: <span data-f="printed"></span></span>
@@ -703,9 +706,23 @@ function buildPrintNode(item) {
   node.querySelector('[data-f="size"]').textContent     = item.size     ||'';
   node.querySelector('[data-f="printed"]').textContent  = new Date().toLocaleString('th-TH');
 
-  const img=node.querySelector('[data-f="photo"]');
+  const img = node.querySelector('[data-f="photo"]');
+  const imgContent = node.querySelector('[data-f="content-photo"]');
+  const heroWrap = node.querySelector('[data-f="hero-wrap"]');
+  
   const safeUrl = getSafeImageUrl(item.photoUrl);
-  if(safeUrl) img.src=safeUrl; else img.remove();
+  const safeContentUrl = getSafeImageUrl(item.contentPhotoUrl); // ดึงรูปรอง
+  
+  // เช็ครูปหลัก
+  if(safeUrl) img.src = safeUrl; 
+  else img.remove();
+  
+  // เช็ครูปเนื้อยา
+  if(safeContentUrl) imgContent.src = safeContentUrl; 
+  else imgContent.remove();
+  
+  // ถ้าไม่มีรูปอะไรเลย ให้ซ่อนกรอบใส่รูปทิ้งไป
+  if(!safeUrl && !safeContentUrl) heroWrap.remove();
 
   const table=node.querySelector('[data-f="table"]');
   const rows=Object.entries(item.parts||{}).filter(([,v])=>v&&String(v).trim());
