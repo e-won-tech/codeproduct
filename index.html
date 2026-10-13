@@ -42,8 +42,8 @@ header{position:sticky;top:0;z-index:50;background:rgba(246,247,251,.88);backdro
 .recent-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 16px;border-bottom:1px solid var(--bd)}
 .recent-title{display:flex;align-items:center;gap:8px;font-weight:700}.live-dot{width:9px;height:9px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 4px rgba(34,197,94,.14)}
 .last-sync{font-size:.75rem;color:var(--muted);font-weight:400}
-.recent-track{display:flex;gap:10px;overflow-x:auto;padding:12px 14px 14px;scroll-snap-type:x mandatory;scrollbar-width:thin;overscroll-behavior-x:contain}
-.recent-item{flex:0 0 min(285px,calc(100vw - 72px));display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid var(--bd);border-radius:13px;background:#fafcff;scroll-snap-align:start;cursor:pointer;font-family:'Sarabun',system-ui;text-align:left;color:var(--ink)}
+.recent-track{display:flex;gap:10px;overflow-x:auto;padding:12px 14px 14px;scrollbar-width:thin;overscroll-behavior-x:contain}
+.recent-item{flex:0 0 min(285px,calc(100vw - 72px));display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid var(--bd);border-radius:13px;background:#fafcff;cursor:pointer;font-family:'Sarabun',system-ui;text-align:left;color:var(--ink)}
 .recent-item:hover{border-color:#b8c5df;background:#f5f7ff}.recent-icon{width:36px;height:36px;border-radius:10px;background:#eef2ff;display:grid;place-items:center;flex:0 0 auto}
 .recent-content{min-width:0;flex:1}.recent-name{font-weight:700;font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.recent-meta{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:.75rem;color:var(--muted)}
 .recent-kind{padding:2px 6px;border-radius:999px;font-weight:600}.recent-kind.new{background:#dcfce7;color:#166534}.recent-kind.edit{background:#e0e7ff;color:#3730a3}
@@ -559,6 +559,7 @@ function renderRecentUpdates(){
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'recent-item';
+    button.setAttribute('data-product-id',String(item.id));
     button.title = changedAt ? new Date(changedAt).toLocaleString('th-TH') : '';
     const icon = document.createElement('span');
     icon.className = 'recent-icon';
@@ -580,9 +581,14 @@ function renderRecentUpdates(){
     meta.appendChild(kind); meta.appendChild(relative);
     content.appendChild(name); content.appendChild(meta);
     button.appendChild(icon); button.appendChild(content);
-    button.onclick = ()=>openModal(item);
     track.appendChild(button);
   });
+  track.onclick = event=>{
+    const button = event.target.closest('.recent-item');
+    if(!button) return;
+    const item = allItems.find(product=>String(product.id)===button.getAttribute('data-product-id'));
+    if(item) openModal(item);
+  };
   track.style.display = recent.length ? 'flex' : 'none';
   empty.style.display = recent.length ? 'none' : 'block';
   restartRecentTicker();
@@ -597,14 +603,25 @@ function updateRecentRelativeTimes(){
 function restartRecentTicker(){
   if(recentTickerTimer) clearInterval(recentTickerTimer);
   const track = document.getElementById('recentUpdatesTrack');
-  if(!track || track.children.length<2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if(!track || track.children.length<1) return;
+  const originals = Array.from(track.querySelectorAll('.recent-item'));
+  const appendCloneSet = ()=>originals.forEach(item=>{
+    const clone = item.cloneNode(true);
+    clone.setAttribute('data-ticker-clone','true');
+    clone.setAttribute('aria-hidden','true');
+    clone.tabIndex = -1;
+    track.appendChild(clone);
+  });
+  appendCloneSet();
+  const firstOriginal = originals[0];
+  const firstClone = track.querySelector('[data-ticker-clone="true"]');
+  const loopWidth = firstClone.offsetLeft-firstOriginal.offsetLeft;
+  if(loopWidth<=0) return;
+  while(track.scrollWidth<track.clientWidth+loopWidth) appendCloneSet();
   recentTickerTimer = setInterval(()=>{
-    if(document.hidden || track.scrollWidth<=track.clientWidth) return;
-    const first = track.querySelector('.recent-item');
-    const step = first ? first.offsetWidth+10 : 290;
-    const atEnd = track.scrollLeft+track.clientWidth>=track.scrollWidth-8;
-    track.scrollTo({left:atEnd?0:track.scrollLeft+step,behavior:'smooth'});
-  },3000);
+    track.scrollLeft += 1;
+    if(track.scrollLeft>=loopWidth) track.scrollLeft-=loopWidth;
+  },22);
 }
 
 function fillSelect(id, arr, withAll=false){
