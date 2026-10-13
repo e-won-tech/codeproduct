@@ -31,6 +31,23 @@ header{position:sticky;top:0;z-index:50;background:rgba(246,247,251,.88);backdro
 .toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
 .toolbar .field{flex:1;min-width:160px}
 .toolbar .search{flex:2;min-width:200px}
+.mode-filter-row{display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap}
+.mode-filter-label{font-size:.88rem;color:#444;font-weight:600;white-space:nowrap}
+.mode-filter-row .seg button{min-width:108px}
+@media(max-width:520px){
+  .mode-filter-row{display:block}
+  .mode-filter-row .seg{display:flex;width:100%;margin-top:7px}
+  .mode-filter-row .seg button{flex:1;min-width:0}
+}
+.recent-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 16px;border-bottom:1px solid var(--bd)}
+.recent-title{display:flex;align-items:center;gap:8px;font-weight:700}.live-dot{width:9px;height:9px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 4px rgba(34,197,94,.14)}
+.last-sync{font-size:.75rem;color:var(--muted);font-weight:400}
+.recent-track{display:flex;gap:10px;overflow-x:auto;padding:12px 14px 14px;scroll-snap-type:x mandatory;scrollbar-width:thin;overscroll-behavior-x:contain}
+.recent-item{flex:0 0 min(285px,calc(100vw - 72px));display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid var(--bd);border-radius:13px;background:#fafcff;scroll-snap-align:start;cursor:pointer;font-family:'Sarabun',system-ui;text-align:left;color:var(--ink)}
+.recent-item:hover{border-color:#b8c5df;background:#f5f7ff}.recent-icon{width:36px;height:36px;border-radius:10px;background:#eef2ff;display:grid;place-items:center;flex:0 0 auto}
+.recent-content{min-width:0;flex:1}.recent-name{font-weight:700;font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.recent-meta{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:.75rem;color:var(--muted)}
+.recent-kind{padding:2px 6px;border-radius:999px;font-weight:600}.recent-kind.new{background:#dcfce7;color:#166534}.recent-kind.edit{background:#e0e7ff;color:#3730a3}
+.recent-empty{padding:16px;text-align:center;color:var(--muted);font-size:.85rem}
 
 /* Checkbox Styles */
 .chk-box{width:18px;height:18px;cursor:pointer;accent-color:var(--pri)}
@@ -52,7 +69,9 @@ tbody tr.selected{background:#eef2ff}
 #cardGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
 @media(min-width:640px){#cardGrid{grid-template-columns:repeat(3,1fr)}}
 @media(min-width:1024px){#cardGrid{grid-template-columns:repeat(4,1fr)}}
-.product-card{position:relative;background:#fff;border:1px solid var(--bd);border-radius:15px;box-shadow:var(--sh);overflow:hidden;display:flex;flex-direction:column;transition:border .2s}
+.product-card{position:relative;background:#fff;border:1px solid var(--bd);border-radius:15px;box-shadow:var(--sh);overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:border .2s,transform .2s,box-shadow .2s}
+.product-card:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(16,24,40,.12)}
+.product-card:focus-visible{outline:3px solid rgba(47,107,255,.28);outline-offset:3px}
 .product-card.selected{border:2px solid var(--pri);box-shadow:0 0 0 3px rgba(47,107,255,.1)}
 .card-chk-wrap{position:absolute;top:10px;left:10px;background:#fff;border-radius:6px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.15);display:grid;place-items:center;z-index:10}
 .card-img{width:100%;aspect-ratio:1/1;object-fit:contain;background:#f2f5fb;display:block}
@@ -61,8 +80,6 @@ tbody tr.selected{background:#eef2ff}
 .card-name{font-weight:700;font-size:.92rem;line-height:1.3}
 .card-size{font-size:.8rem;color:var(--muted)}
 .card-company{font-size:.78rem;color:var(--pri);background:#eef2ff;border-radius:999px;padding:2px 8px;width:fit-content;margin-top:3px}
-.card-footer{display:flex;gap:6px;padding:8px 12px;border-top:1px solid var(--bd);background:#fafcff}
-.card-footer .iconbtn{flex:1}
 
 /* View toggle */
 .view-toggle{display:flex;gap:5px}
@@ -172,6 +189,15 @@ tbody tr.selected{background:#eef2ff}
 
 <main class="wrap">
 
+  <section class="card" id="recentUpdatesCard">
+    <div class="recent-hd">
+      <div class="recent-title"><span class="live-dot"></span>อัปเดตล่าสุด</div>
+      <div class="last-sync" id="lastSyncLabel">กำลังซิงก์…</div>
+    </div>
+    <div class="recent-track" id="recentUpdatesTrack"></div>
+    <div class="recent-empty" id="recentUpdatesEmpty">ยังไม่มีประวัติการอัปเดต</div>
+  </section>
+
   <div class="card" id="filterCard">
     <div class="bd" style="padding-bottom: 8px;">
       <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap">
@@ -183,21 +209,22 @@ tbody tr.selected{background:#eef2ff}
         </button>
       </div>
 
+      <div class="mode-filter-row">
+        <div class="mode-filter-label">รูปแบบรายการ</div>
+        <div class="seg">
+          <button id="fSingle" class="active" onclick="setMode('single',this)">รายการเดี่ยว</button>
+          <button id="fSet" onclick="setMode('set',this)">รายการชุด</button>
+        </div>
+      </div>
+
       <div id="extendedFilters" class="hidden" style="margin-top:16px; padding-top:16px; border-top:1px dashed var(--bd);">
         <div class="toolbar">
-          <div class="field">
-            <label>รูปแบบรายการ</label>
-            <div class="seg">
-              <button id="fSingle" class="active" onclick="setMode('single',this)">รายการเดี่ยว</button>
-              <button id="fSet" onclick="setMode('set',this)">รายการชุด</button>
-            </div>
-          </div>
-          <div class="field"><label>ผลิตภัณฑ์ของ</label><select id="fCompany" class="select" onchange="render()"></select></div>
-          <div class="field"><label>หมวดหมู่สาร</label><select id="fCategory" class="select" onchange="render()"></select></div>
-          <div class="field"><label>บรรจุภัณฑ์</label><select id="fPackage" class="select" onchange="render()"></select></div>
-          <div class="field"><label>ฟิล์ม</label><select id="fFilm" class="select" onchange="render()"></select></div>
-          <div class="field"><label>ฝา</label><select id="fCap" class="select" onchange="render()"></select></div>
-          <div class="field"><label>ลังนอก</label><select id="fBox" class="select" onchange="render()"></select></div>
+          <div class="field"><label>ผลิตภัณฑ์ของ</label><input id="fCompany" class="input" list="dl-fCompany" placeholder="ทั้งหมด — พิมพ์เพื่อค้นหา" autocomplete="off" oninput="render()"/><datalist id="dl-fCompany"></datalist></div>
+          <div class="field"><label>หมวดหมู่สาร</label><input id="fCategory" class="input" list="dl-fCategory" placeholder="ทั้งหมด — พิมพ์เพื่อค้นหา" autocomplete="off" oninput="render()"/><datalist id="dl-fCategory"></datalist></div>
+          <div class="field"><label>บรรจุภัณฑ์</label><input id="fPackage" class="input" list="dl-fPackage" placeholder="ทั้งหมด — พิมพ์เพื่อค้นหา" autocomplete="off" oninput="render()"/><datalist id="dl-fPackage"></datalist></div>
+          <div class="field"><label>ฟิล์ม</label><input id="fFilm" class="input" list="dl-fFilm" placeholder="ทั้งหมด — พิมพ์เพื่อค้นหา" autocomplete="off" oninput="render()"/><datalist id="dl-fFilm"></datalist></div>
+          <div class="field"><label>ฝา</label><input id="fCap" class="input" list="dl-fCap" placeholder="ทั้งหมด — พิมพ์เพื่อค้นหา" autocomplete="off" oninput="render()"/><datalist id="dl-fCap"></datalist></div>
+          <div class="field"><label>ลังนอก</label><input id="fBox" class="input" list="dl-fBox" placeholder="ทั้งหมด — พิมพ์เพื่อค้นหา" autocomplete="off" oninput="render()"/><datalist id="dl-fBox"></datalist></div>
         </div>
       </div>
     </div>
@@ -311,8 +338,9 @@ tbody tr.selected{background:#eef2ff}
 // ══════════════════════════════════════════════
 //  ⚙️  ตั้งค่า URL ที่นี่ (⚠️ อย่าลืมแก้ให้เป็นลิงก์ของคุณ)
 // ══════════════════════════════════════════════
-const GAS_URL   = 'https://script.google.com/macros/s/AKfycbyQ3tPUjb--hGY8IGiSG6MwuIRDKAlfcuTUkm3oihRpczdWu7RW1hV-6S5kgD4bszQ0/exec';
+const GAS_URL   = 'https://script.google.com/macros/s/AKfycbwXpWUi2ClDQxzCHPdjnselIye9VQbu4Mb-TSRe69fZiXRfgH4ZF8TOp3bZqwBwIrCi/exec';
 const PAGE_SIZE = 50;
+const LIVE_SYNC_MS = 15000;
 
 // ══════════════════════════════════════════════
 //  State
@@ -322,6 +350,10 @@ let filterMod = 'single';
 let viewMode  = 'table';
 let page      = 1;
 let selectedIds = new Set(); 
+let productFingerprint = '';
+let syncInProgress = false;
+let liveSyncTimer = null;
+let recentTickerTimer = null;
 
 // ══════════════════════════════════════════════
 //  Helpers & โค้ดสลับรูป (เพิ่มใหม่ 🟢)
@@ -404,49 +436,172 @@ function drawCode128(canvas, text){
 // ══════════════════════════════════════════════
 //  Load data & Setup Filters (🟢 อัปเดตกรองรายการซ่อนแล้ว)
 // ══════════════════════════════════════════════
+function buildProductFingerprint(items){
+  return JSON.stringify((items||[]).map(item=>({
+    id:item.id||'', updatedAt:item.updatedAt||'', status:item.status||'',
+    name:item.name||'', size:item.size||'', company:item.company||'',
+    category:item.category||'', parts:item.parts||{}
+  })).sort((a,b)=>String(a.id).localeCompare(String(b.id))));
+}
+
+function updateFilterChoices(){
+  const comps = new Set(), cats = new Set();
+  const pkgs = new Set(), films = new Set(), caps = new Set(), boxes = new Set();
+  allItems.forEach(item => {
+    if(item.status === 'hidden') return;
+    if(item.company) comps.add(item.company);
+    if(item.category) cats.add(item.category);
+    if(item.parts) {
+      if(item.parts['บรรจุภัณฑ์']) pkgs.add(item.parts['บรรจุภัณฑ์']);
+      if(item.parts['ฟิล์ม']) films.add(item.parts['ฟิล์ม']);
+      if(item.parts['ฝา']) caps.add(item.parts['ฝา']);
+      if(item.parts['ลังนอก']) boxes.add(item.parts['ลังนอก']);
+    }
+  });
+  fillSelect('fCompany', Array.from(comps).sort(), true);
+  fillSelect('fCategory', Array.from(cats).sort(), true);
+  fillSelect('fPackage', Array.from(pkgs).sort(), true);
+  fillSelect('fFilm', Array.from(films).sort(), true);
+  fillSelect('fCap', Array.from(caps).sort(), true);
+  fillSelect('fBox', Array.from(boxes).sort(), true);
+}
+
+function applyProductData(items){
+  allItems = items || [];
+  updateFilterChoices();
+  renderRecentUpdates();
+  render();
+}
+
 async function loadAll(){
+  if(syncInProgress) return;
+  syncInProgress = true;
   showLoading('กำลังโหลดรายการสินค้า…');
   try{
-    const prodRes = await gasCall('getAll'); 
-    allItems = prodRes.data || [];
-
-    const comps = new Set(), cats = new Set();
-    const pkgs = new Set(), films = new Set(), caps = new Set(), boxes = new Set();
-    
-    allItems.forEach(item => {
-        if(item.status === 'hidden') return; // ข้ามรายการที่ซ่อน
-        
-        if(item.company) comps.add(item.company);
-        if(item.category) cats.add(item.category);
-        
-        if(item.parts) {
-            if(item.parts['บรรจุภัณฑ์']) pkgs.add(item.parts['บรรจุภัณฑ์']);
-            if(item.parts['ฟิล์ม']) films.add(item.parts['ฟิล์ม']);
-            if(item.parts['ฝา']) caps.add(item.parts['ฝา']);
-            if(item.parts['ลังนอก']) boxes.add(item.parts['ลังนอก']);
-        }
-    });
-    
-    fillSelect('fCompany', Array.from(comps).sort(), true);
-    fillSelect('fCategory', Array.from(cats).sort(), true);
-    fillSelect('fPackage', Array.from(pkgs).sort(), true);
-    fillSelect('fFilm', Array.from(films).sort(), true);
-    fillSelect('fCap', Array.from(caps).sort(), true);
-    fillSelect('fBox', Array.from(boxes).sort(), true);
-
-    render();
+    const prodRes = await gasCall('getAll');
+    const nextItems = prodRes.data || [];
+    productFingerprint = buildProductFingerprint(nextItems);
+    applyProductData(nextItems);
+    updateLastSyncLabel();
     toast('✅ โหลด '+allItems.length+' รายการ');
   } catch(e){
     toast('❌ โหลดไม่สำเร็จ: '+e.message, 5000);
   } finally {
+    syncInProgress = false;
     hideLoading();
   }
 }
 
+async function syncProducts(){
+  if(syncInProgress || document.hidden) return;
+  syncInProgress = true;
+  try{
+    const prodRes = await gasCall('getAll');
+    const nextItems = prodRes.data || [];
+    const nextFingerprint = buildProductFingerprint(nextItems);
+    if(nextFingerprint !== productFingerprint){
+      productFingerprint = nextFingerprint;
+      applyProductData(nextItems);
+      toast('🔄 มีข้อมูลสินค้าอัปเดตใหม่');
+    } else {
+      renderRecentUpdates();
+    }
+    updateLastSyncLabel();
+  } catch(e){
+    document.getElementById('lastSyncLabel').textContent = 'รอเชื่อมต่อใหม่…';
+  } finally {
+    syncInProgress = false;
+  }
+}
+
+function startLiveUpdates(){
+  if(liveSyncTimer) clearInterval(liveSyncTimer);
+  liveSyncTimer = setInterval(syncProducts, LIVE_SYNC_MS);
+}
+
+function updateLastSyncLabel(){
+  document.getElementById('lastSyncLabel').textContent = 'ซิงก์ล่าสุด '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+}
+
+function formatRelativeTime(value){
+  const time = new Date(value).getTime();
+  if(!Number.isFinite(time)) return '';
+  const seconds = Math.max(0,Math.floor((Date.now()-time)/1000));
+  if(seconds < 60) return 'เมื่อสักครู่';
+  const minutes = Math.floor(seconds/60);
+  if(minutes < 60) return minutes+' นาทีที่แล้ว';
+  const hours = Math.floor(minutes/60);
+  if(hours < 24) return hours+' ชั่วโมงที่แล้ว';
+  const days = Math.floor(hours/24);
+  if(days < 30) return days+' วันที่แล้ว';
+  const months = Math.floor(days/30);
+  if(months < 12) return months+' เดือนที่แล้ว';
+  return new Date(time).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'});
+}
+
+function renderRecentUpdates(){
+  const track = document.getElementById('recentUpdatesTrack');
+  const empty = document.getElementById('recentUpdatesEmpty');
+  if(!track || !empty) return;
+  const recent = allItems.filter(item=>item.status!=='hidden' && (item.updatedAt||item.createdAt)).sort((a,b)=>{
+    return new Date(b.updatedAt||b.createdAt).getTime()-new Date(a.updatedAt||a.createdAt).getTime();
+  }).slice(0,10);
+  track.innerHTML = '';
+  recent.forEach(item=>{
+    const created = new Date(item.createdAt).getTime();
+    const updated = new Date(item.updatedAt||item.createdAt).getTime();
+    const isNew = Number.isFinite(created) && Number.isFinite(updated) && Math.abs(updated-created)<5000;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'recent-item';
+    button.title = new Date(updated).toLocaleString('th-TH');
+    const icon = document.createElement('span');
+    icon.className = 'recent-icon';
+    icon.textContent = isNew ? '✨' : '✏️';
+    const content = document.createElement('span');
+    content.className = 'recent-content';
+    const name = document.createElement('span');
+    name.className = 'recent-name';
+    name.textContent = item.name || 'สินค้าไม่มีชื่อ';
+    const meta = document.createElement('span');
+    meta.className = 'recent-meta';
+    const kind = document.createElement('span');
+    kind.className = 'recent-kind '+(isNew?'new':'edit');
+    kind.textContent = isNew ? 'เพิ่มใหม่' : 'แก้ไข';
+    const relative = document.createElement('span');
+    relative.textContent = formatRelativeTime(item.updatedAt||item.createdAt);
+    meta.appendChild(kind); meta.appendChild(relative);
+    content.appendChild(name); content.appendChild(meta);
+    button.appendChild(icon); button.appendChild(content);
+    button.onclick = ()=>openModal(item);
+    track.appendChild(button);
+  });
+  track.style.display = recent.length ? 'flex' : 'none';
+  empty.style.display = recent.length ? 'none' : 'block';
+  restartRecentTicker();
+}
+
+function restartRecentTicker(){
+  if(recentTickerTimer) clearInterval(recentTickerTimer);
+  const track = document.getElementById('recentUpdatesTrack');
+  if(!track || track.children.length<2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  recentTickerTimer = setInterval(()=>{
+    if(track.matches(':hover') || document.hidden) return;
+    const first = track.querySelector('.recent-item');
+    const step = first ? first.offsetWidth+10 : 290;
+    const atEnd = track.scrollLeft+track.clientWidth>=track.scrollWidth-8;
+    track.scrollTo({left:atEnd?0:track.scrollLeft+step,behavior:'smooth'});
+  },5000);
+}
+
 function fillSelect(id, arr, withAll=false){
-  const el=document.getElementById(id); if(!el)return;
-  el.innerHTML = withAll?'<option value="">ทั้งหมด</option>':'';
-  arr.forEach(v=>el.innerHTML+=`<option value="${v}">${v}</option>`);
+  const datalist=document.getElementById('dl-'+id); if(!datalist)return;
+  datalist.innerHTML='';
+  arr.forEach(v=>{
+    const option=document.createElement('option');
+    option.value=v;
+    datalist.appendChild(option);
+  });
 }
 
 function toggleFilters() {
@@ -464,23 +619,24 @@ function toggleFilters() {
 //  Filter + Render
 // ══════════════════════════════════════════════
 function filtered(){
-  const comp = document.getElementById('fCompany').value;
-  const cat  = document.getElementById('fCategory').value;
-  const pkg  = document.getElementById('fPackage').value;
-  const film = document.getElementById('fFilm').value;
-  const cap  = document.getElementById('fCap').value;
-  const box  = document.getElementById('fBox').value;
+  const comp = document.getElementById('fCompany').value.trim().toLowerCase();
+  const cat  = document.getElementById('fCategory').value.trim().toLowerCase();
+  const pkg  = document.getElementById('fPackage').value.trim().toLowerCase();
+  const film = document.getElementById('fFilm').value.trim().toLowerCase();
+  const cap  = document.getElementById('fCap').value.trim().toLowerCase();
+  const box  = document.getElementById('fBox').value.trim().toLowerCase();
   const q    = (document.getElementById('fSearch').value||'').trim().toLowerCase();
+  const matchesFilter = (value, needle) => !needle || String(value == null ? '' : value).toLowerCase().includes(needle);
   
   let arr = allItems.filter(x=>x.mode===filterMod);
   arr = arr.filter(x => x.status !== 'hidden'); // 🟢 กรองรายการที่ถูกซ่อนทิ้ง
   
-  if(comp) arr=arr.filter(x=>x.company===comp||x.rawCompany===comp);
-  if(cat)  arr=arr.filter(x=>x.category===cat);
-  if(pkg)  arr=arr.filter(x=>x.parts && x.parts['บรรจุภัณฑ์'] === pkg);
-  if(film) arr=arr.filter(x=>x.parts && x.parts['ฟิล์ม'] === film);
-  if(cap)  arr=arr.filter(x=>x.parts && x.parts['ฝา'] === cap);
-  if(box)  arr=arr.filter(x=>x.parts && x.parts['ลังนอก'] === box);
+  if(comp) arr=arr.filter(x=>matchesFilter(x.company,comp)||matchesFilter(x.rawCompany,comp));
+  if(cat)  arr=arr.filter(x=>matchesFilter(x.category,cat));
+  if(pkg)  arr=arr.filter(x=>matchesFilter(x.parts&&x.parts['บรรจุภัณฑ์'],pkg));
+  if(film) arr=arr.filter(x=>matchesFilter(x.parts&&x.parts['ฟิล์ม'],film));
+  if(cap)  arr=arr.filter(x=>matchesFilter(x.parts&&x.parts['ฝา'],cap));
+  if(box)  arr=arr.filter(x=>matchesFilter(x.parts&&x.parts['ลังนอก'],box));
   
   // 🟢 แก้บั๊กค้นหาบาร์โค้ดแล้ว
   if(q) arr=arr.filter(x=>(x.name||'').toLowerCase().includes(q) || String(x.barcode||'').includes(q));
@@ -562,6 +718,8 @@ function renderCards(slice){
 
     const div=document.createElement('div');
     div.className = `product-card ${isChecked ? 'selected' : ''}`;
+    div.tabIndex = 0;
+    div.setAttribute('aria-label', `ดูรายละเอียด ${item.name||'สินค้า'}`);
     
     // 🟢 ใส่โครงสร้างสลับรูปเนื้อยา
     div.innerHTML=`
@@ -576,11 +734,16 @@ function renderCards(slice){
         <div class="card-name">${item.name||'—'}</div>
         <div class="card-size">${item.size||''}</div>
         <div class="card-company">${item.company||''}</div>
-      </div>
-      <div class="card-footer">
-        <div class="iconbtn" title="พรีวิว" style="flex:1" onclick='openModal(${JSON.stringify(item).replace(/'/g, "&#39;")})'>👁️</div>
-        <div class="iconbtn" title="พิมพ์" style="flex:1" onclick='printItem(${JSON.stringify(item).replace(/'/g, "&#39;")})'>🖨️</div>
       </div>`;
+    div.onclick = event => {
+      if(event.target.closest('.card-chk-wrap') || event.target.closest('.img-toggle-badge')) return;
+      openModal(item);
+    };
+    div.onkeydown = event => {
+      if(event.target !== div || (event.key !== 'Enter' && event.key !== ' ')) return;
+      event.preventDefault();
+      openModal(item);
+    };
     grid.appendChild(div);
   });
   
@@ -807,7 +970,11 @@ if(GAS_URL==='YOUR_GAS_WEB_APP_URL'){
   document.querySelector('.wrap').insertAdjacentHTML('afterbegin',
     '<div style="margin-bottom:16px;padding:12px 16px;border-radius:12px;background:#fffef0;border:1px solid #ffdf6b;color:#7c5e10">⚠️ ยังไม่ได้ตั้งค่า GAS_URL — โปรดแก้ไขในโค้ด</div>');
 } else {
-  loadAll();
+  loadAll().then(startLiveUpdates);
+  setInterval(renderRecentUpdates,60000);
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden) syncProducts();
+  });
 }
 </script>
 </body>
