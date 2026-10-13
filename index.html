@@ -338,7 +338,7 @@ tbody tr.selected{background:#eef2ff}
 // ══════════════════════════════════════════════
 //  ⚙️  ตั้งค่า URL ที่นี่ (⚠️ อย่าลืมแก้ให้เป็นลิงก์ของคุณ)
 // ══════════════════════════════════════════════
-const GAS_URL   = 'https://script.google.com/macros/s/AKfycbwXpWUi2ClDQxzCHPdjnselIye9VQbu4Mb-TSRe69fZiXRfgH4ZF8TOp3bZqwBwIrCi/exec';
+const GAS_URL   = 'https://script.google.com/macros/s/AKfycbxBR37qxIqt3FKknJMHd7ufFlwY5Iu4jQq3-wnq1yQj_YZBWWeUXUK_keZ_Appa6bQ-/exec';
 const PAGE_SIZE = 50;
 const LIVE_SYNC_MS = 15000;
 
@@ -351,6 +351,7 @@ let viewMode  = 'table';
 let page      = 1;
 let selectedIds = new Set(); 
 let productFingerprint = '';
+let recentActivities = [];
 let syncInProgress = false;
 let liveSyncTimer = null;
 let recentTickerTimer = null;
@@ -436,12 +437,13 @@ function drawCode128(canvas, text){
 // ══════════════════════════════════════════════
 //  Load data & Setup Filters (🟢 อัปเดตกรองรายการซ่อนแล้ว)
 // ══════════════════════════════════════════════
-function buildProductFingerprint(items){
-  return JSON.stringify((items||[]).map(item=>({
+function buildProductFingerprint(items,activities){
+  const productState = (items||[]).map(item=>({
     id:item.id||'', updatedAt:item.updatedAt||'', status:item.status||'',
     name:item.name||'', size:item.size||'', company:item.company||'',
     category:item.category||'', parts:item.parts||{}
-  })).sort((a,b)=>String(a.id).localeCompare(String(b.id))));
+  })).sort((a,b)=>String(a.id).localeCompare(String(b.id)));
+  return JSON.stringify({products:productState,activities:activities||[]});
 }
 
 function updateFilterChoices(){
@@ -466,8 +468,9 @@ function updateFilterChoices(){
   fillSelect('fBox', Array.from(boxes).sort(), true);
 }
 
-function applyProductData(items){
+function applyProductData(items,activities){
   allItems = items || [];
+  recentActivities = (activities || []).slice(0,10);
   updateFilterChoices();
   renderRecentUpdates();
   render();
@@ -480,8 +483,9 @@ async function loadAll(){
   try{
     const prodRes = await gasCall('getAll');
     const nextItems = prodRes.data || [];
-    productFingerprint = buildProductFingerprint(nextItems);
-    applyProductData(nextItems);
+    const nextActivities = prodRes.recentUpdates || [];
+    productFingerprint = buildProductFingerprint(nextItems,nextActivities);
+    applyProductData(nextItems,nextActivities);
     updateLastSyncLabel();
     toast('✅ โหลด '+allItems.length+' รายการ');
   } catch(e){
@@ -498,13 +502,14 @@ async function syncProducts(){
   try{
     const prodRes = await gasCall('getAll');
     const nextItems = prodRes.data || [];
-    const nextFingerprint = buildProductFingerprint(nextItems);
+    const nextActivities = prodRes.recentUpdates || [];
+    const nextFingerprint = buildProductFingerprint(nextItems,nextActivities);
     if(nextFingerprint !== productFingerprint){
       productFingerprint = nextFingerprint;
-      applyProductData(nextItems);
+      applyProductData(nextItems,nextActivities);
       toast('🔄 มีข้อมูลสินค้าอัปเดตใหม่');
     } else {
-      renderRecentUpdates();
+      updateRecentRelativeTimes();
     }
     updateLastSyncLabel();
   } catch(e){
@@ -543,18 +548,18 @@ function renderRecentUpdates(){
   const track = document.getElementById('recentUpdatesTrack');
   const empty = document.getElementById('recentUpdatesEmpty');
   if(!track || !empty) return;
-  const recent = allItems.filter(item=>item.status!=='hidden' && (item.updatedAt||item.createdAt)).sort((a,b)=>{
-    return new Date(b.updatedAt||b.createdAt).getTime()-new Date(a.updatedAt||a.createdAt).getTime();
-  }).slice(0,10);
+  const itemById = new Map(allItems.map(item=>[String(item.id),item]));
+  const recent = recentActivities.map(activity=>({activity,item:itemById.get(String(activity.id))})).filter(entry=>entry.item && entry.item.status!=='hidden').slice(0,10);
   track.innerHTML = '';
-  recent.forEach(item=>{
-    const created = new Date(item.createdAt).getTime();
-    const updated = new Date(item.updatedAt||item.createdAt).getTime();
-    const isNew = Number.isFinite(created) && Number.isFinite(updated) && Math.abs(updated-created)<5000;
+  recent.forEach(entry=>{
+    const item = entry.item;
+    const activity = entry.activity;
+    const changedAt = activity.changedAt;
+    const isNew = activity.type==='created';
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'recent-item';
-    button.title = new Date(updated).toLocaleString('th-TH');
+    button.title = changedAt ? new Date(changedAt).toLocaleString('th-TH') : '';
     const icon = document.createElement('span');
     icon.className = 'recent-icon';
     icon.textContent = isNew ? '✨' : '✏️';
@@ -569,7 +574,9 @@ function renderRecentUpdates(){
     kind.className = 'recent-kind '+(isNew?'new':'edit');
     kind.textContent = isNew ? 'เพิ่มใหม่' : 'แก้ไข';
     const relative = document.createElement('span');
-    relative.textContent = formatRelativeTime(item.updatedAt||item.createdAt);
+    relative.className = 'recent-time';
+    relative.setAttribute('data-time',changedAt||'');
+    relative.textContent = formatRelativeTime(changedAt);
     meta.appendChild(kind); meta.appendChild(relative);
     content.appendChild(name); content.appendChild(meta);
     button.appendChild(icon); button.appendChild(content);
@@ -581,17 +588,23 @@ function renderRecentUpdates(){
   restartRecentTicker();
 }
 
+function updateRecentRelativeTimes(){
+  document.querySelectorAll('.recent-time').forEach(element=>{
+    element.textContent = formatRelativeTime(element.getAttribute('data-time'));
+  });
+}
+
 function restartRecentTicker(){
   if(recentTickerTimer) clearInterval(recentTickerTimer);
   const track = document.getElementById('recentUpdatesTrack');
   if(!track || track.children.length<2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   recentTickerTimer = setInterval(()=>{
-    if(track.matches(':hover') || document.hidden) return;
+    if(document.hidden || track.scrollWidth<=track.clientWidth) return;
     const first = track.querySelector('.recent-item');
     const step = first ? first.offsetWidth+10 : 290;
     const atEnd = track.scrollLeft+track.clientWidth>=track.scrollWidth-8;
     track.scrollTo({left:atEnd?0:track.scrollLeft+step,behavior:'smooth'});
-  },5000);
+  },3000);
 }
 
 function fillSelect(id, arr, withAll=false){
@@ -971,7 +984,7 @@ if(GAS_URL==='YOUR_GAS_WEB_APP_URL'){
     '<div style="margin-bottom:16px;padding:12px 16px;border-radius:12px;background:#fffef0;border:1px solid #ffdf6b;color:#7c5e10">⚠️ ยังไม่ได้ตั้งค่า GAS_URL — โปรดแก้ไขในโค้ด</div>');
 } else {
   loadAll().then(startLiveUpdates);
-  setInterval(renderRecentUpdates,60000);
+  setInterval(updateRecentRelativeTimes,60000);
   document.addEventListener('visibilitychange',()=>{
     if(!document.hidden) syncProducts();
   });
